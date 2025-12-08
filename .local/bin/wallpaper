@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Wallpaper management script for Hyprland
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+CURRENT_WALLPAPER_FILE="$HOME/.config/current_wallpaper"
+
+# Function to set wallpaper
+set_wallpaper() {
+    local wallpaper="$1"
+    if [[ -f "$wallpaper" ]]; then
+        echo "$wallpaper" > "$CURRENT_WALLPAPER_FILE"
+        hyprctl hyprpaper wallpaper "DP-2,$wallpaper"
+        hyprctl hyprpaper wallpaper "HDMI-A-1,$wallpaper"
+        notify-send "Wallpaper changed" "$(basename "$wallpaper")"
+    else
+        echo "Wallpaper not found: $wallpaper"
+    fi
+}
+
+# Function to set random wallpaper
+random_wallpaper() {
+    local wallpapers=("$WALLPAPER_DIR"/*.{jpg,jpeg,png,webp})
+    if [[ ${#wallpapers[@]} -gt 0 ]]; then
+        local random_wallpaper="${wallpapers[RANDOM % ${#wallpapers[@]}]}"
+        set_wallpaper "$random_wallpaper"
+    else
+        echo "No wallpapers found in $WALLPAPER_DIR"
+    fi
+}
+
+# Function to list available wallpapers
+list_wallpapers() {
+    echo "Available wallpapers:"
+    find "$WALLPAPER_DIR" -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" -o -name "*.webp" \) | nl
+}
+
+# Function to show current wallpaper
+current_wallpaper() {
+    if [[ -f "$CURRENT_WALLPAPER_FILE" ]]; then
+        echo "Current wallpaper: $(cat "$CURRENT_WALLPAPER_FILE")"
+    else
+        echo "No current wallpaper set"
+    fi
+}
+
+# Main script logic
+case "$1" in
+    set)
+        if [[ -n "$2" ]]; then
+            set_wallpaper "$2"
+        else
+            echo "Usage: $0 set <wallpaper_path>"
+        fi
+        ;;
+    random)
+        random_wallpaper
+        ;;
+    list)
+        list_wallpapers
+        ;;
+    current)
+        current_wallpaper
+        ;;
+    *)
+        echo "Usage: $0 {set|random|list|current}"
+        echo "Examples:"
+        echo "  $0 random                    # Set random wallpaper"
+        echo "  $0 set ~/path/to/wall.jpg    # Set specific wallpaper"
+        echo "  $0 list                      # List available wallpapers"
+        echo "  $0 current                   # Show current wallpaper"
+        ;;
+esac
