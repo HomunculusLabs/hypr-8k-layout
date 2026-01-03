@@ -7,13 +7,17 @@
 
 # Size presets: width, center_x, sidebar_width, sidebar_right_x
 # Calculated for 7680px width with 80px edge gaps and 100px inner gaps
-# Formula: sidebars = (7320 - center) / 2, right_x = center_x + center + 100
+# Formula: center_x = (7680 - width) / 2
+#          sidebars = (7320 - center) / 2
+#          right_x = center_x + center + 100
 declare -A SIZES
+SIZES[1920]="1920 2880 2700 4900"   # 1080p - ultra focused
+SIZES[2200]="2200 2740 2560 5040"   # Small
 SIZES[2560]="2560 2560 2380 5220"   # QHD - default
 SIZES[3000]="3000 2340 2160 5440"   # Medium
-SIZES[3840]="3840 1920 1740 5860"   # 4K - large (fixed gaps)
+SIZES[3840]="3840 1920 1740 5860"   # 4K - large
 
-SIZE_ORDER=(2560 3000 3840)
+SIZE_ORDER=(1920 2200 2560 3000 3840)
 
 ZONE_Y=100
 TOTAL_HEIGHT=1960
@@ -33,9 +37,13 @@ if [[ -z "$center_addr" ]]; then
     exit 1
 fi
 
-# Get current center width
+# Get current center dimensions (preserve height and y position)
 current_width=$(hyprctl clients -j | jq -r \
     ".[] | select(.address == \"$center_addr\") | .size[0]")
+current_height=$(hyprctl clients -j | jq -r \
+    ".[] | select(.address == \"$center_addr\") | .size[1]")
+current_y=$(hyprctl clients -j | jq -r \
+    ".[] | select(.address == \"$center_addr\") | .at[1]")
 
 # Find next size in cycle
 next_size=""
@@ -53,10 +61,10 @@ done
 # Parse new dimensions
 read -r new_width new_center_x new_sidebar_width new_right_x <<< "${SIZES[$next_size]}"
 
-# Update center window
+# Update center window (preserve current height and y position)
 hyprctl dispatch focuswindow "address:$center_addr"
-hyprctl dispatch resizeactive exact $new_width $TOTAL_HEIGHT
-hyprctl dispatch moveactive exact $new_center_x $ZONE_Y
+hyprctl dispatch resizeactive exact $new_width $current_height
+hyprctl dispatch moveactive exact $new_center_x $current_y
 
 # Update left sidebar windows
 left_windows=$(hyprctl clients -j | jq -r \
