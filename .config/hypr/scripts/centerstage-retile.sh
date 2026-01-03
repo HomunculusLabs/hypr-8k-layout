@@ -6,25 +6,27 @@
 ZONE="${1:-center}"
 WORKSPACE="${2:-1}"
 
-# Zone definitions
-GAP_IN=10
-ZONE_Y=30
-TOTAL_HEIGHT=2100
+# Zone definitions for ergonomic spacing
+# gaps_out = 100 80 100 80 (top right bottom left)
+# Default center: 2560px (QHD) - comfortable reading width
+GAP_IN=100  # Large gaps between stacked sidebar windows
+ZONE_Y=100
+TOTAL_HEIGHT=1960  # 2160 - 100 top - 100 bottom
 
 case "$ZONE" in
     left)
-        ZONE_X=25
-        ZONE_WIDTH=1885
+        ZONE_X=80
+        ZONE_WIDTH=2380
         TAG="centerstage-left"
         ;;
     center)
-        ZONE_X=1930
-        ZONE_WIDTH=3820
+        ZONE_X=2560
+        ZONE_WIDTH=2560  # QHD width - comfortable default
         TAG="centerstage-center"
         ;;
     right)
-        ZONE_X=5770
-        ZONE_WIDTH=1885
+        ZONE_X=5220
+        ZONE_WIDTH=2380
         TAG="centerstage-right"
         ;;
     *)
