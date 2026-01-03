@@ -21,6 +21,8 @@ SIZE_ORDER=(1920 2200 2560 3000 3840)
 
 ZONE_Y=100
 TOTAL_HEIGHT=1960
+GAP_IN=100
+STATE_FILE="/tmp/centerstage-sidebar-offset"
 
 # Get current workspace
 workspace=$(hyprctl activeworkspace -j | jq -r .id)
@@ -58,8 +60,19 @@ done
 # Default to first size if current not found
 [[ -z "$next_size" ]] && next_size="${SIZE_ORDER[0]}"
 
-# Parse new dimensions
-read -r new_width new_center_x new_sidebar_width new_right_x <<< "${SIZES[$next_size]}"
+# Parse new dimensions (base values for symmetric sidebars)
+read -r new_width new_center_x base_sidebar_width base_right_x <<< "${SIZES[$next_size]}"
+
+# Read sidebar offset to preserve asymmetric balance
+sidebar_offset=0
+[[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
+
+# Apply offset to sidebar widths
+left_sidebar_width=$(( base_sidebar_width + sidebar_offset ))
+right_sidebar_width=$(( base_sidebar_width - sidebar_offset ))
+
+# Recalculate right_x based on center position
+new_right_x=$(( new_center_x + new_width + GAP_IN ))
 
 # Update center window (preserve current height and y position)
 hyprctl dispatch focuswindow "address:$center_addr"
@@ -87,7 +100,7 @@ if [[ "$count" -gt 0 ]]; then
     while IFS= read -r addr; do
         [[ -z "$addr" ]] && continue
         y=$(( ZONE_Y + i * (win_height + 100) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $new_sidebar_width $win_height ; dispatch moveactive exact 80 $y"
+        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $left_sidebar_width $win_height ; dispatch moveactive exact 80 $y"
         ((i++))
     done <<< "$left_windows"
 fi
@@ -113,7 +126,7 @@ if [[ "$count" -gt 0 ]]; then
     while IFS= read -r addr; do
         [[ -z "$addr" ]] && continue
         y=$(( ZONE_Y + i * (win_height + 100) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $new_sidebar_width $win_height ; dispatch moveactive exact $new_right_x $y"
+        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $right_sidebar_width $win_height ; dispatch moveactive exact $new_right_x $y"
         ((i++))
     done <<< "$right_windows"
 fi

@@ -6,27 +6,41 @@
 ZONE="${1:-center}"
 WORKSPACE="${2:-1}"
 
-# Zone definitions for ergonomic spacing
-# gaps_out = 100 80 100 80 (top right bottom left)
-# Default center: 2560px (QHD) - comfortable reading width
-GAP_IN=100  # Large gaps between stacked sidebar windows
+GAP_IN=100
 ZONE_Y=100
-TOTAL_HEIGHT=1960  # 2160 - 100 top - 100 bottom
+TOTAL_HEIGHT=1960
+STATE_FILE="/tmp/centerstage-sidebar-offset"
+
+# Read sidebar offset for asymmetric widths
+sidebar_offset=0
+[[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
+
+# Get current center window width (or default to 2560)
+center_width=$(hyprctl clients -j | jq -r \
+    ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .size[0]" | head -1)
+[[ -z "$center_width" || "$center_width" == "null" ]] && center_width=2560
+
+# Calculate dynamic zone dimensions
+base_sidebar=$(( (7320 - center_width) / 2 ))
+left_width=$(( base_sidebar + sidebar_offset ))
+right_width=$(( base_sidebar - sidebar_offset ))
+center_x=$(( (7680 - center_width) / 2 ))
+right_x=$(( center_x + center_width + GAP_IN ))
 
 case "$ZONE" in
     left)
         ZONE_X=80
-        ZONE_WIDTH=2380
+        ZONE_WIDTH=$left_width
         TAG="centerstage-left"
         ;;
     center)
-        ZONE_X=2560
-        ZONE_WIDTH=2560  # QHD width - comfortable default
+        ZONE_X=$center_x
+        ZONE_WIDTH=$center_width
         TAG="centerstage-center"
         ;;
     right)
-        ZONE_X=5220
-        ZONE_WIDTH=2380
+        ZONE_X=$right_x
+        ZONE_WIDTH=$right_width
         TAG="centerstage-right"
         ;;
     *)
