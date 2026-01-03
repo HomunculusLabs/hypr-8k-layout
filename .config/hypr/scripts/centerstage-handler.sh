@@ -11,7 +11,7 @@ handle_window_open() {
     local addr="$1"
 
     # Small delay to let window fully initialize
-    sleep 0.15
+    sleep 0.1
 
     # Get window info
     local window_info=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$addr\")")
@@ -59,17 +59,16 @@ retile_zone() {
     local ZONE_Y=100
     local TOTAL_HEIGHT=1960
     local GAP_IN=100
-    local STATE_FILE="/tmp/centerstage-sidebar-offset"
+    local OFFSET_FILE="/tmp/centerstage-sidebar-offset"
+    local WIDTH_FILE="/tmp/centerstage-center-width"
 
     # Read sidebar offset for asymmetric widths
     local sidebar_offset=0
-    [[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
+    [[ -f "$OFFSET_FILE" ]] && sidebar_offset=$(cat "$OFFSET_FILE")
 
-    # Get center window width to calculate sidebar widths
-    local center_width=$(hyprctl clients -j | jq -r \
-        ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .size[0]" | head -1)
-
-    # Default to 2560 if no center window found
+    # Read stored center width preference (default 2560)
+    local center_width=2560
+    [[ -f "$WIDTH_FILE" ]] && center_width=$(cat "$WIDTH_FILE")
     [[ -z "$center_width" || "$center_width" == "null" ]] && center_width=2560
 
     # Calculate base sidebar width

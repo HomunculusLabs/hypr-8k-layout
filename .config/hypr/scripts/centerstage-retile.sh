@@ -9,15 +9,16 @@ WORKSPACE="${2:-1}"
 GAP_IN=100
 ZONE_Y=100
 TOTAL_HEIGHT=1960
-STATE_FILE="/tmp/centerstage-sidebar-offset"
+OFFSET_FILE="/tmp/centerstage-sidebar-offset"
+WIDTH_FILE="/tmp/centerstage-center-width"
 
 # Read sidebar offset for asymmetric widths
 sidebar_offset=0
-[[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
+[[ -f "$OFFSET_FILE" ]] && sidebar_offset=$(cat "$OFFSET_FILE")
 
-# Get current center window width (or default to 2560)
-center_width=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .size[0]" | head -1)
+# Read stored center width preference (default 2560)
+center_width=2560
+[[ -f "$WIDTH_FILE" ]] && center_width=$(cat "$WIDTH_FILE")
 [[ -z "$center_width" || "$center_width" == "null" ]] && center_width=2560
 
 # Calculate dynamic zone dimensions

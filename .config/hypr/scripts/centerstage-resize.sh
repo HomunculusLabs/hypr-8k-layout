@@ -60,6 +60,9 @@ done
 # Default to first size if current not found
 [[ -z "$next_size" ]] && next_size="${SIZE_ORDER[0]}"
 
+# Save the new center width to state file
+echo "$next_size" > /tmp/centerstage-center-width
+
 # Parse new dimensions (base values for symmetric sidebars)
 read -r new_width new_center_x base_sidebar_width base_right_x <<< "${SIZES[$next_size]}"
 
