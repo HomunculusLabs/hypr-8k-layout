@@ -2,16 +2,14 @@
 # centerstage-swap.sh - Reorder and swap windows between zones
 #
 # Usage: centerstage-swap.sh <direction>
-#   up    - Move window up in sidebar stack (wraps)
-#   down  - Move window down in sidebar stack (wraps)
+#   up    - Move window up/prev in zone (wraps)
+#   down  - Move window down/next in zone (wraps)
 #   left  - Move window to left zone (right→center→left)
 #   right - Move window to right zone (left→center→right)
 
+source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
+
 DIRECTION="$1"
-STATE_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
-ZONE_Y=100
-TOTAL_HEIGHT=1960
-GAP_IN=100
 
 # Get current workspace
 workspace=$(hyprctl activeworkspace -j | jq -r .id)
@@ -36,76 +34,14 @@ fi
 
 [[ -z "$current_zone" ]] && { notify-send "Center Stage" "Window not in center-stage"; exit 1; }
 
-# Helper: Get zone dimensions
-get_zone_params() {
-    local zone="$1"
-
-    # Read sidebar offset
-    local sidebar_offset=0
-    [[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
-
-    # Get center width
-    local center_width=$(hyprctl clients -j | jq -r \
-        ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .size[0]" | head -1)
-    [[ -z "$center_width" || "$center_width" == "null" ]] && center_width=2560
-
-    # Calculate dimensions
-    local base_sidebar=$(( (7320 - center_width) / 2 ))
-    local left_width=$(( base_sidebar + sidebar_offset ))
-    local right_width=$(( base_sidebar - sidebar_offset ))
-    local center_x=$(( (7680 - center_width) / 2 ))
-    local right_x=$(( center_x + center_width + GAP_IN ))
-
-    case "$zone" in
-        left)   echo "80 $left_width centerstage-left" ;;
-        center) echo "$center_x $center_width centerstage-center" ;;
-        right)  echo "$right_x $right_width centerstage-right" ;;
-    esac
-}
-
-# Helper: Retile a zone
-retile_zone() {
-    local zone="$1"
-    read -r zone_x zone_width tag <<< "$(get_zone_params "$zone")"
-
-    # Get windows sorted by Y position
-    local windows=$(hyprctl clients -j | jq -r \
-        "[.[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"$tag\")) != null)] | sort_by(.at[1]) | .[].address")
-
-    local count=0
-    while IFS= read -r addr; do
-        [[ -n "$addr" ]] && ((count++))
-    done <<< "$windows"
-
-    [[ "$count" -eq 0 ]] && return
-
-    # Calculate height
-    local win_height
-    if [[ "$count" -eq 1 ]]; then
-        win_height=$TOTAL_HEIGHT
-    else
-        local total_gap=$(( (count - 1) * GAP_IN ))
-        win_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
-    fi
-
-    # Position windows
-    local i=0
-    while IFS= read -r addr; do
-        [[ -z "$addr" ]] && continue
-        local y=$(( ZONE_Y + i * (win_height + GAP_IN) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $zone_width $win_height ; dispatch moveactive exact $zone_x $y"
-        ((i++))
-    done <<< "$windows"
-}
-
-# Handle up/down (reorder within zone)
+# Handle up/down (reorder within zone - works for both stack and grid)
 handle_vertical() {
     local dir="$1"
-    read -r zone_x zone_width tag <<< "$(get_zone_params "$current_zone")"
+    read -r zone_x zone_width tag <<< "$(get_zone_dimensions "$current_zone")"
 
-    # Get windows in zone sorted by Y
+    # Get windows in zone sorted by position (top-left to bottom-right for grid)
     local windows=$(hyprctl clients -j | jq -r \
-        "[.[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"$tag\")) != null)] | sort_by(.at[1]) | .[].address")
+        "[.[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"$tag\")) != null)] | sort_by([.at[1], .at[0]]) | .[].address")
 
     # Convert to array
     local -a win_array=()
@@ -127,12 +63,33 @@ handle_vertical() {
 
     [[ "$focused_idx" -eq -1 ]] && return
 
-    # Calculate swap target with wrap-around
+    # Get grid dimensions for navigation
+    read -r cols rows <<< "$(calculate_grid $count)"
+
+    # Calculate swap target
     local swap_idx
-    if [[ "$dir" == "up" ]]; then
-        swap_idx=$(( (focused_idx - 1 + count) % count ))
+    if [[ $cols -eq 1 ]]; then
+        # Vertical stack - up/down moves by one
+        if [[ "$dir" == "up" ]]; then
+            swap_idx=$(( (focused_idx - 1 + count) % count ))
+        else
+            swap_idx=$(( (focused_idx + 1) % count ))
+        fi
     else
-        swap_idx=$(( (focused_idx + 1) % count ))
+        # Grid layout - up/down moves by row (cols positions)
+        local current_col=$(( focused_idx % cols ))
+        local current_row=$(( focused_idx / cols ))
+
+        if [[ "$dir" == "up" ]]; then
+            local new_row=$(( (current_row - 1 + rows) % rows ))
+            swap_idx=$(( new_row * cols + current_col ))
+        else
+            local new_row=$(( (current_row + 1) % rows ))
+            swap_idx=$(( new_row * cols + current_col ))
+        fi
+
+        # Handle incomplete rows
+        [[ $swap_idx -ge $count ]] && swap_idx=$(( count - 1 ))
     fi
 
     # Swap in array
@@ -140,20 +97,37 @@ handle_vertical() {
     win_array[$focused_idx]="${win_array[$swap_idx]}"
     win_array[$swap_idx]="$temp"
 
-    # Calculate height
-    local win_height
-    if [[ "$count" -eq 1 ]]; then
-        win_height=$TOTAL_HEIGHT
+    # Calculate cell dimensions
+    local cell_width cell_height
+    if [[ $cols -eq 1 ]]; then
+        cell_width=$zone_width
+        if [[ $count -eq 1 ]]; then
+            cell_height=$TOTAL_HEIGHT
+        else
+            local total_gap=$(( (count - 1) * GAP_IN ))
+            cell_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
+        fi
     else
-        local total_gap=$(( (count - 1) * GAP_IN ))
-        win_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
+        cell_width=$(( (zone_width - (cols - 1) * GAP_IN) / cols ))
+        cell_height=$(( (TOTAL_HEIGHT - (rows - 1) * GAP_IN) / rows ))
     fi
 
     # Reposition all windows in new order
     for i in "${!win_array[@]}"; do
         local addr="${win_array[$i]}"
-        local y=$(( ZONE_Y + i * (win_height + GAP_IN) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $zone_width $win_height ; dispatch moveactive exact $zone_x $y"
+        local x y
+
+        if [[ $cols -eq 1 ]]; then
+            x=$zone_x
+            y=$(( ZONE_Y + i * (cell_height + GAP_IN) ))
+        else
+            local col=$(( i % cols ))
+            local row=$(( i / cols ))
+            x=$(( zone_x + col * (cell_width + GAP_IN) ))
+            y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
+        fi
+
+        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
     done
 
     # Refocus the original window
@@ -190,9 +164,9 @@ handle_horizontal() {
     hyprctl dispatch "tagwindow -centerstage-right"
     hyprctl dispatch "tagwindow +centerstage-$target_zone"
 
-    # Retile both zones
-    retile_zone "$current_zone"
-    retile_zone "$target_zone"
+    # Retile both zones using the main script (with grid support)
+    ~/.config/hypr/scripts/centerstage-retile.sh "$current_zone" "$workspace"
+    ~/.config/hypr/scripts/centerstage-retile.sh "$target_zone" "$workspace"
 
     # Refocus the moved window
     hyprctl dispatch focuswindow "address:$focused_addr"

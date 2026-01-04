@@ -1,53 +1,15 @@
 #!/bin/bash
-# centerstage-retile.sh - Re-tile windows in a zone vertically
+# centerstage-retile.sh - Re-tile windows in a zone (vertical stack or grid)
 #
 # Usage: centerstage-retile.sh <zone> <workspace_id>
+
+source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
 
 ZONE="${1:-center}"
 WORKSPACE="${2:-1}"
 
-GAP_IN=100
-ZONE_Y=100
-TOTAL_HEIGHT=1960
-OFFSET_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
-WIDTH_FILE="$HOME/.config/hypr/state/centerstage-center-width"
-
-# Read sidebar offset for asymmetric widths
-sidebar_offset=0
-[[ -f "$OFFSET_FILE" ]] && sidebar_offset=$(cat "$OFFSET_FILE")
-
-# Read stored center width preference (default 2560)
-center_width=2560
-[[ -f "$WIDTH_FILE" ]] && center_width=$(cat "$WIDTH_FILE")
-[[ -z "$center_width" || "$center_width" == "null" ]] && center_width=2560
-
-# Calculate dynamic zone dimensions
-base_sidebar=$(( (7320 - center_width) / 2 ))
-left_width=$(( base_sidebar + sidebar_offset ))
-right_width=$(( base_sidebar - sidebar_offset ))
-center_x=$(( (7680 - center_width) / 2 ))
-right_x=$(( center_x + center_width + GAP_IN ))
-
-case "$ZONE" in
-    left)
-        ZONE_X=80
-        ZONE_WIDTH=$left_width
-        TAG="centerstage-left"
-        ;;
-    center)
-        ZONE_X=$center_x
-        ZONE_WIDTH=$center_width
-        TAG="centerstage-center"
-        ;;
-    right)
-        ZONE_X=$right_x
-        ZONE_WIDTH=$right_width
-        TAG="centerstage-right"
-        ;;
-    *)
-        exit 1
-        ;;
-esac
+# Get zone parameters
+read -r ZONE_X ZONE_WIDTH TAG <<< "$(get_zone_dimensions "$ZONE")"
 
 # Get all windows in this zone and workspace
 mapfile -t windows < <(hyprctl clients -j | jq -r \
@@ -57,22 +19,43 @@ count=${#windows[@]}
 
 [[ "$count" -eq 0 ]] && exit 0
 
-# Calculate height per window
-if [[ "$count" -eq 1 ]]; then
-    win_height=$TOTAL_HEIGHT
+# Calculate grid dimensions
+read -r cols rows <<< "$(calculate_grid $count)"
+
+# Calculate cell dimensions
+if [[ $cols -eq 1 ]]; then
+    # Vertical stack (original behavior)
+    cell_width=$ZONE_WIDTH
+    if [[ $count -eq 1 ]]; then
+        cell_height=$TOTAL_HEIGHT
+    else
+        total_gap=$(( (count - 1) * GAP_IN ))
+        cell_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
+    fi
 else
-    total_gap=$(( (count - 1) * GAP_IN ))
-    win_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
+    # Grid layout
+    cell_width=$(( (ZONE_WIDTH - (cols - 1) * GAP_IN) / cols ))
+    cell_height=$(( (TOTAL_HEIGHT - (rows - 1) * GAP_IN) / rows ))
 fi
 
-# Position each window using batch commands
+# Position each window
 i=0
 for addr in "${windows[@]}"; do
     [[ -z "$addr" ]] && continue
 
-    y=$(( ZONE_Y + i * (win_height + GAP_IN) ))
+    if [[ $cols -eq 1 ]]; then
+        # Vertical stack
+        x=$ZONE_X
+        y=$(( ZONE_Y + i * (cell_height + GAP_IN) ))
+    else
+        # Grid positioning
+        col=$(( i % cols ))
+        row=$(( i / cols ))
+        x=$(( ZONE_X + col * (cell_width + GAP_IN) ))
+        y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
+    fi
 
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $ZONE_WIDTH $win_height ; dispatch moveactive exact $ZONE_X $y"
+    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
 
     ((i++))
 done

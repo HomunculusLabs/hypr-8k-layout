@@ -1,0 +1,13 @@
+# Minimum window widths per application class
+# Format: class:min_width_px
+obsidian:1225
+org.gnome.Nautilus:1225
+com.mitchellh.ghostty:1225
+brave-browser:900
+firefox:900
+chromium:900
+Signal:400
+spotify:600
+slack:500
+discord:500
+default:400
