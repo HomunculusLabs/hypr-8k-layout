@@ -7,7 +7,7 @@
 #
 # Usage: centerstage-sidebar.sh
 
-STATE_FILE="/tmp/centerstage-sidebar-offset"
+STATE_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
 OFFSET_ORDER=(-400 -200 0 200 400)
 
 ZONE_Y=100

@@ -9,8 +9,8 @@ WORKSPACE="${2:-1}"
 GAP_IN=100
 ZONE_Y=100
 TOTAL_HEIGHT=1960
-OFFSET_FILE="/tmp/centerstage-sidebar-offset"
-WIDTH_FILE="/tmp/centerstage-center-width"
+OFFSET_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
+WIDTH_FILE="$HOME/.config/hypr/state/centerstage-center-width"
 
 # Read sidebar offset for asymmetric widths
 sidebar_offset=0

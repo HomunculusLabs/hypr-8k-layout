@@ -8,7 +8,7 @@
 #   right - Move window to right zone (left→center→right)
 
 DIRECTION="$1"
-STATE_FILE="/tmp/centerstage-sidebar-offset"
+STATE_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
 ZONE_Y=100
 TOTAL_HEIGHT=1960
 GAP_IN=100

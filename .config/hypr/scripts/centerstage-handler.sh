@@ -3,7 +3,7 @@
 # First window goes to center, rest go to right sidebar
 
 # Prevent multiple instances
-LOCKFILE="/tmp/centerstage-handler.lock"
+LOCKFILE="$HOME/.config/hypr/state/centerstage-handler.lock"
 exec 200>"$LOCKFILE"
 flock -n 200 || { echo "Handler already running"; exit 1; }
 
@@ -59,8 +59,8 @@ retile_zone() {
     local ZONE_Y=100
     local TOTAL_HEIGHT=1960
     local GAP_IN=100
-    local OFFSET_FILE="/tmp/centerstage-sidebar-offset"
-    local WIDTH_FILE="/tmp/centerstage-center-width"
+    local OFFSET_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
+    local WIDTH_FILE="$HOME/.config/hypr/state/centerstage-center-width"
 
     # Read sidebar offset for asymmetric widths
     local sidebar_offset=0

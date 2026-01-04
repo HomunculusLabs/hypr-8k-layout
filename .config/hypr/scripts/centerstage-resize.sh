@@ -22,7 +22,7 @@ SIZE_ORDER=(1920 2200 2560 3000 3840)
 ZONE_Y=100
 TOTAL_HEIGHT=1960
 GAP_IN=100
-STATE_FILE="/tmp/centerstage-sidebar-offset"
+STATE_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
 
 # Get current workspace
 workspace=$(hyprctl activeworkspace -j | jq -r .id)
@@ -61,7 +61,7 @@ done
 [[ -z "$next_size" ]] && next_size="${SIZE_ORDER[0]}"
 
 # Save the new center width to state file
-echo "$next_size" > /tmp/centerstage-center-width
+echo "$next_size" > $HOME/.config/hypr/state/centerstage-center-width
 
 # Parse new dimensions (base values for symmetric sidebars)
 read -r new_width new_center_x base_sidebar_width base_right_x <<< "${SIZES[$next_size]}"

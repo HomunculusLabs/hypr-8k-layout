@@ -1,0 +1,23 @@
+[
+  {
+    "workspace": 1,
+    "windows": [
+      {
+        "class": "com.mitchellh.ghostty",
+        "zone": "right"
+      },
+      {
+        "class": "obsidian",
+        "zone": "left"
+      },
+      {
+        "class": "com.mitchellh.ghostty",
+        "zone": "center"
+      },
+      {
+        "class": "com.mitchellh.ghostty",
+        "zone": "right"
+      }
+    ]
+  }
+]
