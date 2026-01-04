@@ -220,6 +220,11 @@ handle_horizontal() {
     hyprctl dispatch "tagwindow -centerstage-left-primary"
     hyprctl dispatch "tagwindow -centerstage-left-secondary"
 
+    # Remove position tags
+    for pos in {1..9}; do
+        hyprctl dispatch "tagwindow -centerstage-right-$pos"
+    done
+
     # Add new tag
     hyprctl dispatch "tagwindow +centerstage-$target_zone"
 

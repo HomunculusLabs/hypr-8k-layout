@@ -34,6 +34,11 @@ hyprctl dispatch tagwindow -- "-centerstage-right" 2>/dev/null || true
 hyprctl dispatch tagwindow -- "-centerstage-left-primary" 2>/dev/null || true
 hyprctl dispatch tagwindow -- "-centerstage-left-secondary" 2>/dev/null || true
 
+# Remove position tags from right sidebar
+for pos in {1..9}; do
+    hyprctl dispatch tagwindow -- "-centerstage-right-$pos" 2>/dev/null || true
+done
+
 # Float and tag the window
 hyprctl dispatch setfloating active
 

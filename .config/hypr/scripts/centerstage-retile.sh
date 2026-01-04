@@ -130,5 +130,15 @@ for addr in "${windows[@]}"; do
 
     hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
 
+    # Assign position tag for right sidebar (1-indexed)
+    if [[ "$ZONE" == "right" ]]; then
+        # Strip old position tags first
+        for pos in {1..9}; do
+            hyprctl dispatch tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null
+        done
+        # Assign new position tag
+        hyprctl dispatch tagwindow "+centerstage-right-$((i + 1))" "address:$addr"
+    fi
+
     ((i++))
 done
