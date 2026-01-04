@@ -18,6 +18,7 @@ SHRINK_MODE_FILE="$STATE_DIR/centerstage-shrink-mode"
 LEFT_WIDTH_FILE="$STATE_DIR/centerstage-left-width"
 RIGHT_WIDTH_FILE="$STATE_DIR/centerstage-right-width"
 LEFT_LAYOUT_FILE="$STATE_DIR/centerstage-left-layout"
+LEFT_PRIMARY_RATIO_FILE="$STATE_DIR/centerstage-left-primary-ratio"
 
 # Read current state into global variables
 read_state() {
@@ -37,6 +38,10 @@ read_state() {
 
     right_width_override=0
     [[ -f "$RIGHT_WIDTH_FILE" ]] && right_width_override=$(cat "$RIGHT_WIDTH_FILE")
+
+    left_primary_ratio=50
+    [[ -f "$LEFT_PRIMARY_RATIO_FILE" ]] && left_primary_ratio=$(cat "$LEFT_PRIMARY_RATIO_FILE")
+    [[ -z "$left_primary_ratio" || "$left_primary_ratio" == "null" ]] && left_primary_ratio=50
 }
 
 # Calculate zone dimensions
@@ -159,6 +164,7 @@ get_left_layout_mode() {
 
 # Calculate sub-column dimensions for left sidebar
 # In split mode, uses full available space (not auto-shrink width)
+# Primary column width is based on left_primary_ratio (default 50%)
 # Usage: read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions primary)"
 get_left_subcolumn_dimensions() {
     local subcolumn=$1  # "primary" or "secondary"
@@ -169,12 +175,15 @@ get_left_subcolumn_dimensions() {
     local left_x=$EDGE_MARGIN
     local left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
 
-    local col_width=$(( (left_width - GAP_IN) / 2 ))
-    local second_x=$(( left_x + col_width + GAP_IN ))
+    # Calculate column widths based on ratio
+    local usable_width=$(( left_width - GAP_IN ))
+    local prim_width=$(( usable_width * left_primary_ratio / 100 ))
+    local sec_width=$(( usable_width - prim_width ))
+    local second_x=$(( left_x + prim_width + GAP_IN ))
 
     case "$subcolumn" in
-        primary)  echo "$left_x $col_width centerstage-left-primary" ;;
-        secondary) echo "$second_x $col_width centerstage-left-secondary" ;;
+        primary)  echo "$left_x $prim_width centerstage-left-primary" ;;
+        secondary) echo "$second_x $sec_width centerstage-left-secondary" ;;
     esac
 }
 
