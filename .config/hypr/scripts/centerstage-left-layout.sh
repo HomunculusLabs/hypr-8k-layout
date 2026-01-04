@@ -1,7 +1,7 @@
 #!/bin/bash
 # centerstage-left-layout.sh - Toggle left sidebar layout mode
 #
-# Cycles through: single -> obsidian-grid -> equal-split -> single
+# Cycles through: single -> obsidian-grid -> grid-obsidian -> equal-split -> single
 #
 # Usage: centerstage-left-layout.sh
 
@@ -50,6 +50,10 @@ case "$current_mode" in
         migrate_to_split
         ;;
     obsidian-grid)
+        new_mode="grid-obsidian"
+        # Keep sub-column assignments, just swap positions
+        ;;
+    grid-obsidian)
         new_mode="equal-split"
         # Keep sub-column assignments
         ;;

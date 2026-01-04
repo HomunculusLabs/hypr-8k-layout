@@ -19,6 +19,7 @@ LEFT_WIDTH_FILE="$STATE_DIR/centerstage-left-width"
 RIGHT_WIDTH_FILE="$STATE_DIR/centerstage-right-width"
 LEFT_LAYOUT_FILE="$STATE_DIR/centerstage-left-layout"
 LEFT_PRIMARY_RATIO_FILE="$STATE_DIR/centerstage-left-primary-ratio"
+OBSIDIAN_GAP_FILE="$STATE_DIR/centerstage-obsidian-gap"
 
 # Read current state into global variables
 read_state() {
@@ -42,6 +43,11 @@ read_state() {
     left_primary_ratio=50
     [[ -f "$LEFT_PRIMARY_RATIO_FILE" ]] && left_primary_ratio=$(cat "$LEFT_PRIMARY_RATIO_FILE")
     [[ -z "$left_primary_ratio" || "$left_primary_ratio" == "null" ]] && left_primary_ratio=50
+
+    # Obsidian extra gap in grid-obsidian mode (default 540 = matches right 2x2/2x3)
+    obsidian_extra_gap=540
+    [[ -f "$OBSIDIAN_GAP_FILE" ]] && obsidian_extra_gap=$(cat "$OBSIDIAN_GAP_FILE")
+    [[ -z "$obsidian_extra_gap" || "$obsidian_extra_gap" == "null" ]] && obsidian_extra_gap=540
 }
 
 # Calculate zone dimensions
@@ -155,16 +161,28 @@ calculate_required_sidebar_width() {
 }
 
 # Get left sidebar layout mode
-# Returns: single | obsidian-grid | equal-split
+# Returns: single | obsidian-grid | grid-obsidian | equal-split
 get_left_layout_mode() {
     local mode="single"
     [[ -f "$LEFT_LAYOUT_FILE" ]] && mode=$(cat "$LEFT_LAYOUT_FILE")
     echo "$mode"
 }
 
+# Calculate right sidebar column width (for matching in left sidebar)
+get_right_column_width() {
+    read_state
+    local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
+    local right_x=$(( center_x + center_width + GAP_IN ))
+    local right_width=$(( SCREEN_WIDTH - EDGE_MARGIN - right_x ))
+    # For 3x3 grid: (width - 2 gaps) / 3 columns
+    echo $(( (right_width - 2 * GAP_IN) / 3 ))
+}
+
 # Calculate sub-column dimensions for left sidebar
 # In split mode, uses full available space (not auto-shrink width)
-# Primary column width is based on left_primary_ratio (default 50%)
+# - obsidian-grid: Primary (Obsidian) left, secondary (grid) right, ratio-based
+# - grid-obsidian: Secondary (grid) left (fixed to right-sidebar column width), primary (Obsidian) right
+# - equal-split: 50/50 split
 # Usage: read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions primary)"
 get_left_subcolumn_dimensions() {
     local subcolumn=$1  # "primary" or "secondary"
@@ -175,16 +193,34 @@ get_left_subcolumn_dimensions() {
     local left_x=$EDGE_MARGIN
     local left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
 
-    # Calculate column widths based on ratio
-    local usable_width=$(( left_width - GAP_IN ))
-    local prim_width=$(( usable_width * left_primary_ratio / 100 ))
-    local sec_width=$(( usable_width - prim_width ))
-    local second_x=$(( left_x + prim_width + GAP_IN ))
+    local layout_mode=$(get_left_layout_mode)
 
-    case "$subcolumn" in
-        primary)  echo "$left_x $prim_width centerstage-left-primary" ;;
-        secondary) echo "$second_x $sec_width centerstage-left-secondary" ;;
-    esac
+    if [[ "$layout_mode" == "grid-obsidian" ]]; then
+        # grid-obsidian: secondary (grid) on left with fixed width matching right sidebar column
+        local right_col_width=$(get_right_column_width)
+        local sec_width=$right_col_width
+        local sec_x=$left_x
+        local prim_x=$(( left_x + sec_width + GAP_IN ))
+
+        # Use configurable extra gap (from state file, default 540 matches right 2x2/2x3)
+        local prim_width=$(( left_width - sec_width - GAP_IN - obsidian_extra_gap ))
+
+        case "$subcolumn" in
+            primary)   echo "$prim_x $prim_width centerstage-left-primary" ;;
+            secondary) echo "$sec_x $sec_width centerstage-left-secondary" ;;
+        esac
+    else
+        # obsidian-grid / equal-split: primary (Obsidian) on left, secondary (grid) on right
+        local usable_width=$(( left_width - GAP_IN ))
+        local prim_width=$(( usable_width * left_primary_ratio / 100 ))
+        local sec_width=$(( usable_width - prim_width ))
+        local second_x=$(( left_x + prim_width + GAP_IN ))
+
+        case "$subcolumn" in
+            primary)  echo "$left_x $prim_width centerstage-left-primary" ;;
+            secondary) echo "$second_x $sec_width centerstage-left-secondary" ;;
+        esac
+    fi
 }
 
 # Get all sub-column tags for a sidebar (for cleanup)
