@@ -21,10 +21,14 @@ workspace=$(hyprctl activeworkspace -j | jq -r .id)
 focused_addr=$(hyprctl activewindow -j | jq -r .address)
 [[ -z "$focused_addr" || "$focused_addr" == "null" ]] && { notify-send "Center Stage" "No focused window"; exit 1; }
 
-# Get focused window's zone tag
+# Get focused window's zone tag (including sub-columns)
 focused_info=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$focused_addr\")")
 current_zone=""
-if echo "$focused_info" | jq -e '.tags | index("centerstage-left")' > /dev/null 2>&1; then
+if echo "$focused_info" | jq -e '.tags | index("centerstage-left-primary")' > /dev/null 2>&1; then
+    current_zone="left-primary"
+elif echo "$focused_info" | jq -e '.tags | index("centerstage-left-secondary")' > /dev/null 2>&1; then
+    current_zone="left-secondary"
+elif echo "$focused_info" | jq -e '.tags | index("centerstage-left")' > /dev/null 2>&1; then
     current_zone="left"
 elif echo "$focused_info" | jq -e '.tags | index("centerstage-center")' > /dev/null 2>&1; then
     current_zone="center"
@@ -37,7 +41,20 @@ fi
 # Handle up/down (reorder within zone - works for both stack and grid)
 handle_vertical() {
     local dir="$1"
-    read -r zone_x zone_width tag <<< "$(get_zone_dimensions "$current_zone")"
+
+    # Get zone dimensions based on zone type
+    local zone_x zone_width tag
+    case "$current_zone" in
+        left-primary)
+            read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions primary)"
+            ;;
+        left-secondary)
+            read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions secondary)"
+            ;;
+        *)
+            read -r zone_x zone_width tag <<< "$(get_zone_dimensions "$current_zone")"
+            ;;
+    esac
 
     # Get windows in zone sorted by position (top-left to bottom-right for grid)
     local windows=$(hyprctl clients -j | jq -r \
@@ -137,19 +154,57 @@ handle_vertical() {
 # Handle left/right (move between zones)
 handle_horizontal() {
     local dir="$1"
+    local layout_mode=$(get_left_layout_mode)
 
-    # Determine target zone
+    # Determine target zone (handles sub-columns)
     local target_zone=""
+    local retile_source="$current_zone"
+    local retile_target=""
+
     case "$current_zone" in
+        left-primary)
+            if [[ "$dir" == "right" ]]; then
+                target_zone="left-secondary"
+                retile_source="left"
+                retile_target="left"
+            fi
+            ;;
+        left-secondary)
+            if [[ "$dir" == "left" ]]; then
+                target_zone="left-primary"
+                retile_source="left"
+                retile_target="left"
+            elif [[ "$dir" == "right" ]]; then
+                target_zone="center"
+                retile_source="left"
+                retile_target="center"
+            fi
+            ;;
         left)
-            [[ "$dir" == "right" ]] && target_zone="center"
+            if [[ "$dir" == "right" ]]; then
+                target_zone="center"
+                retile_target="center"
+            fi
             ;;
         center)
-            [[ "$dir" == "left" ]] && target_zone="left"
-            [[ "$dir" == "right" ]] && target_zone="right"
+            if [[ "$dir" == "left" ]]; then
+                if [[ "$layout_mode" != "single" ]]; then
+                    target_zone="left-secondary"
+                    retile_target="left"
+                else
+                    target_zone="left"
+                    retile_target="left"
+                fi
+            elif [[ "$dir" == "right" ]]; then
+                target_zone="right"
+                retile_target="right"
+            fi
             ;;
         right)
-            [[ "$dir" == "left" ]] && target_zone="center"
+            if [[ "$dir" == "left" ]]; then
+                target_zone="center"
+                retile_target="center"
+            fi
             ;;
     esac
 
@@ -158,15 +213,19 @@ handle_horizontal() {
     # Focus the window first (tagwindow applies to active window)
     hyprctl dispatch focuswindow "address:$focused_addr"
 
-    # Remove ALL zone tags first, then add new tag
+    # Remove ALL zone tags first (including sub-column tags)
     hyprctl dispatch "tagwindow -centerstage-left"
     hyprctl dispatch "tagwindow -centerstage-center"
     hyprctl dispatch "tagwindow -centerstage-right"
+    hyprctl dispatch "tagwindow -centerstage-left-primary"
+    hyprctl dispatch "tagwindow -centerstage-left-secondary"
+
+    # Add new tag
     hyprctl dispatch "tagwindow +centerstage-$target_zone"
 
-    # Retile both zones using the main script (with grid support)
-    ~/.config/hypr/scripts/centerstage-retile.sh "$current_zone" "$workspace"
-    ~/.config/hypr/scripts/centerstage-retile.sh "$target_zone" "$workspace"
+    # Retile affected zones
+    [[ -n "$retile_source" ]] && ~/.config/hypr/scripts/centerstage-retile.sh "$retile_source" "$workspace"
+    [[ -n "$retile_target" && "$retile_target" != "$retile_source" ]] && ~/.config/hypr/scripts/centerstage-retile.sh "$retile_target" "$workspace"
 
     # Refocus the moved window
     hyprctl dispatch focuswindow "address:$focused_addr"

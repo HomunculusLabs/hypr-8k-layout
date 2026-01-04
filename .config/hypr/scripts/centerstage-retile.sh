@@ -8,7 +8,66 @@ source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
 ZONE="${1:-center}"
 WORKSPACE="${2:-1}"
 
-# Get zone parameters
+# Check for sub-column layouts in left sidebar
+if [[ "$ZONE" == "left" ]]; then
+    layout_mode=$(get_left_layout_mode)
+    if [[ "$layout_mode" != "single" ]]; then
+        # Retile primary sub-column (single window, full height)
+        read -r prim_x prim_width prim_tag <<< "$(get_left_subcolumn_dimensions primary)"
+        mapfile -t prim_windows < <(hyprctl clients -j | jq -r \
+            ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$prim_tag\")) != null) | .address")
+
+        if [[ ${#prim_windows[@]} -gt 0 ]]; then
+            for addr in "${prim_windows[@]}"; do
+                [[ -z "$addr" ]] && continue
+                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $prim_width $TOTAL_HEIGHT ; dispatch moveactive exact $prim_x $ZONE_Y"
+            done
+        fi
+
+        # Retile secondary sub-column (grid layout)
+        read -r sec_x sec_width sec_tag <<< "$(get_left_subcolumn_dimensions secondary)"
+        mapfile -t sec_windows < <(hyprctl clients -j | jq -r \
+            ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$sec_tag\")) != null) | .address")
+
+        sec_count=${#sec_windows[@]}
+        if [[ $sec_count -gt 0 ]]; then
+            read -r cols rows <<< "$(calculate_grid $sec_count)"
+
+            if [[ $cols -eq 1 ]]; then
+                cell_width=$sec_width
+                if [[ $sec_count -eq 1 ]]; then
+                    cell_height=$TOTAL_HEIGHT
+                else
+                    total_gap=$(( (sec_count - 1) * GAP_IN ))
+                    cell_height=$(( (TOTAL_HEIGHT - total_gap) / sec_count ))
+                fi
+            else
+                cell_width=$(( (sec_width - (cols - 1) * GAP_IN) / cols ))
+                cell_height=$(( (TOTAL_HEIGHT - (rows - 1) * GAP_IN) / rows ))
+            fi
+
+            i=0
+            for addr in "${sec_windows[@]}"; do
+                [[ -z "$addr" ]] && continue
+                if [[ $cols -eq 1 ]]; then
+                    x=$sec_x
+                    y=$(( ZONE_Y + i * (cell_height + GAP_IN) ))
+                else
+                    col=$(( i % cols ))
+                    row=$(( i / cols ))
+                    x=$(( sec_x + col * (cell_width + GAP_IN) ))
+                    y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
+                fi
+                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+                ((i++))
+            done
+        fi
+
+        exit 0
+    fi
+fi
+
+# Get zone parameters (standard single-column mode)
 read -r ZONE_X ZONE_WIDTH TAG <<< "$(get_zone_dimensions "$ZONE")"
 
 # Get all windows in this zone and workspace
@@ -18,6 +77,20 @@ mapfile -t windows < <(hyprctl clients -j | jq -r \
 count=${#windows[@]}
 
 [[ "$count" -eq 0 ]] && exit 0
+
+# Right sidebar: scale width based on window count
+# Calculate minimum width needed for square cells at each grid size
+if [[ "$ZONE" == "right" ]]; then
+    if [[ $count -lt 4 ]]; then
+        # 1-3: vertical stack, cell height ~586-1960px, half width (1235px) is plenty
+        ZONE_WIDTH=$(( ZONE_WIDTH / 2 ))
+    elif [[ $count -lt 7 ]]; then
+        # 4-6: 2x2 or 2x3 grid, need ~1960px for square 2x2 (930px cells)
+        ZONE_WIDTH=$(( ZONE_WIDTH * 4 / 5 ))
+    fi
+    # 7+: full width for 3x3 grid
+    ZONE_X=$(( SCREEN_WIDTH - EDGE_MARGIN - ZONE_WIDTH ))
+fi
 
 # Calculate grid dimensions
 read -r cols rows <<< "$(calculate_grid $count)"

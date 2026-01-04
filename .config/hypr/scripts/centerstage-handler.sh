@@ -82,7 +82,14 @@ handle_window_open() {
 
     # Apps that should always go to left sidebar
     case "$class" in
-        obsidian|org.gnome.Nautilus)
+        obsidian)
+            echo "DEBUG: Obsidian detected, switching to obsidian-grid layout"
+            echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
+            ~/.config/hypr/scripts/centerstage-move.sh left-primary
+            apply_shrink_if_needed "$workspace"
+            return
+            ;;
+        org.gnome.Nautilus)
             echo "DEBUG: Moving $class to left sidebar"
             ~/.config/hypr/scripts/centerstage-move.sh left
             apply_shrink_if_needed "$workspace"
@@ -92,15 +99,33 @@ handle_window_open() {
 
     # Count existing center-stage windows in this workspace
     local center_count=$(count_zone_windows "centerstage-center" "$workspace")
+    local right_count=$(count_zone_windows "centerstage-right" "$workspace")
 
-    echo "DEBUG: center_count=$center_count"
+    # Count left sidebar (including sub-columns in split mode)
+    local layout_mode=$(get_left_layout_mode)
+    local left_count
+    if [[ "$layout_mode" != "single" ]]; then
+        local prim_count=$(count_zone_windows "centerstage-left-primary" "$workspace")
+        local sec_count=$(count_zone_windows "centerstage-left-secondary" "$workspace")
+        left_count=$((prim_count + sec_count))
+    else
+        left_count=$(count_zone_windows "centerstage-left" "$workspace")
+    fi
+
+    echo "DEBUG: center=$center_count left=$left_count right=$right_count layout=$layout_mode"
 
     if [[ "$center_count" -eq 0 ]]; then
         echo "DEBUG: Moving to center"
         ~/.config/hypr/scripts/centerstage-move.sh center
-    else
+    elif [[ "$right_count" -lt 9 ]]; then
         echo "DEBUG: Moving to right"
         ~/.config/hypr/scripts/centerstage-move.sh right
+    elif [[ "$left_count" -lt 9 ]]; then
+        echo "DEBUG: Right full, moving to left"
+        ~/.config/hypr/scripts/centerstage-move.sh left
+    else
+        echo "DEBUG: Sidebars full, stacking on center"
+        ~/.config/hypr/scripts/centerstage-move.sh center
     fi
 
     apply_shrink_if_needed "$workspace"

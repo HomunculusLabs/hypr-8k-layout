@@ -17,6 +17,7 @@ MIN_WIDTHS_FILE="$STATE_DIR/centerstage-min-widths"
 SHRINK_MODE_FILE="$STATE_DIR/centerstage-shrink-mode"
 LEFT_WIDTH_FILE="$STATE_DIR/centerstage-left-width"
 RIGHT_WIDTH_FILE="$STATE_DIR/centerstage-right-width"
+LEFT_LAYOUT_FILE="$STATE_DIR/centerstage-left-layout"
 
 # Read current state into global variables
 read_state() {
@@ -44,26 +45,15 @@ get_zone_dimensions() {
     local zone=$1
     read_state
 
-    # Center is always fixed
+    # Center is always fixed and centered
     local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
 
-    # Calculate sidebar widths
-    local left_width right_width right_x
-
-    if [[ "$shrink_mode" == "auto" && $left_width_override -gt 0 && $right_width_override -gt 0 ]]; then
-        # Use direct width values in auto mode
-        left_width=$left_width_override
-        right_width=$right_width_override
-    else
-        # Traditional offset-based calculation
-        local base_sidebar=$(( (7320 - center_width) / 2 ))
-        left_width=$(( base_sidebar + sidebar_offset ))
-        right_width=$(( base_sidebar - sidebar_offset ))
-    fi
-
-    # Sidebars positioned at screen edges
+    # Calculate sidebar widths using full available space
     local left_x=$EDGE_MARGIN
-    local right_x=$(( SCREEN_WIDTH - EDGE_MARGIN - right_width ))
+    local left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
+
+    local right_x=$(( center_x + center_width + GAP_IN ))
+    local right_width=$(( SCREEN_WIDTH - EDGE_MARGIN - right_x ))
 
     case "$zone" in
         left)   echo "$left_x $left_width centerstage-left" ;;
@@ -157,4 +147,39 @@ calculate_required_sidebar_width() {
     local required=$(( max_min * cols + (cols - 1) * GAP_IN ))
 
     echo "$required"
+}
+
+# Get left sidebar layout mode
+# Returns: single | obsidian-grid | equal-split
+get_left_layout_mode() {
+    local mode="single"
+    [[ -f "$LEFT_LAYOUT_FILE" ]] && mode=$(cat "$LEFT_LAYOUT_FILE")
+    echo "$mode"
+}
+
+# Calculate sub-column dimensions for left sidebar
+# In split mode, uses full available space (not auto-shrink width)
+# Usage: read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions primary)"
+get_left_subcolumn_dimensions() {
+    local subcolumn=$1  # "primary" or "secondary"
+    read_state
+
+    # Calculate full available width for left sidebar (ignoring auto-shrink)
+    local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
+    local left_x=$EDGE_MARGIN
+    local left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
+
+    local col_width=$(( (left_width - GAP_IN) / 2 ))
+    local second_x=$(( left_x + col_width + GAP_IN ))
+
+    case "$subcolumn" in
+        primary)  echo "$left_x $col_width centerstage-left-primary" ;;
+        secondary) echo "$second_x $col_width centerstage-left-secondary" ;;
+    esac
+}
+
+# Get all sub-column tags for a sidebar (for cleanup)
+get_subcolumn_tags() {
+    local side=$1  # "left" or "right"
+    echo "centerstage-${side}-primary centerstage-${side}-secondary"
 }
