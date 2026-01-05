@@ -1,0 +1,159 @@
+#!/bin/bash
+# centerstage - Unified CLI for center-stage window management
+#
+# Usage: centerstage <command> [args]
+
+SCRIPT_DIR="$HOME/.config/hypr/scripts"
+
+show_help() {
+    cat << 'EOF'
+centerstage - Window management CLI for ultrawide displays
+
+USAGE:
+    centerstage <command> [args]
+
+COMMANDS:
+    restart              Restart the centerstage handler
+    status               Show current layout state
+
+    move <zone>          Move active window to zone
+                         Zones: left, center, right, left-primary, left-secondary
+
+    focus <zone>         Focus a zone (left, center, right)
+    swap [zone]          Swap windows between zones
+    swap-primary         Swap left-primary with center
+
+    resize               Cycle center window width
+    sidebar              Cycle sidebar balance (left ↔ right)
+    height <up|down>     Adjust window heights
+
+    layout <mode>        Set left sidebar layout
+                         Modes: single, split, obsidian-grid
+    ratio <+|-|value>    Adjust left column ratio
+    gap <+|-|value>      Adjust obsidian gap
+
+    pbp                  Toggle picture-by-picture mode
+    pip                  Toggle picture-in-picture
+    shrink               Toggle auto-shrink mode
+
+    retile [zone]        Retile zone(s) - left, right, center, or all
+    save                 Save current layout
+    restore              Restore saved layout
+
+    help                 Show this help
+
+EXAMPLES:
+    centerstage move center
+    centerstage resize
+    centerstage layout obsidian-grid
+    centerstage gap +50
+EOF
+}
+
+show_status() {
+    local state_dir="$HOME/.config/hypr/state"
+    local workspace=$(hyprctl activeworkspace -j | jq -r .id)
+
+    echo "=== Centerstage Status ==="
+    echo "Workspace: $workspace"
+    echo ""
+
+    # Handler status
+    if pgrep -f centerstage-handler > /dev/null; then
+        echo "Handler: running"
+    else
+        echo "Handler: STOPPED"
+    fi
+    echo ""
+
+    # Layout state
+    echo "Layout:"
+    echo "  Center width: $(cat "$state_dir/centerstage-center-width" 2>/dev/null || echo "default")"
+    echo "  Left width:   $(cat "$state_dir/centerstage-left-width" 2>/dev/null || echo "default")"
+    echo "  Right width:  $(cat "$state_dir/centerstage-right-width" 2>/dev/null || echo "default")"
+    echo "  Left layout:  $(cat "$state_dir/centerstage-left-layout" 2>/dev/null || echo "single")"
+    echo "  Shrink mode:  $(cat "$state_dir/centerstage-shrink-mode" 2>/dev/null || echo "off")"
+    echo "  PBP mode:     $(cat "$state_dir/centerstage-pbp-mode" 2>/dev/null || echo "off")"
+    echo ""
+
+    # Window counts
+    echo "Windows on workspace $workspace:"
+    for zone in center left right left-primary left-secondary; do
+        count=$(hyprctl clients -j | jq -r \
+            "[.[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-$zone\")) != null)] | length")
+        [[ "$count" -gt 0 ]] && echo "  $zone: $count"
+    done
+}
+
+case "${1:-help}" in
+    restart)
+        "$SCRIPT_DIR/centerstage-restart.sh"
+        ;;
+    status)
+        show_status
+        ;;
+    move)
+        "$SCRIPT_DIR/centerstage-move.sh" "${2:-center}"
+        ;;
+    focus)
+        "$SCRIPT_DIR/centerstage-focus.sh" "${2:-center}"
+        ;;
+    swap)
+        "$SCRIPT_DIR/centerstage-swap.sh" "$2"
+        ;;
+    swap-primary)
+        "$SCRIPT_DIR/centerstage-swap-primary-center.sh"
+        ;;
+    resize)
+        "$SCRIPT_DIR/centerstage-resize.sh"
+        ;;
+    sidebar)
+        "$SCRIPT_DIR/centerstage-sidebar.sh"
+        ;;
+    height)
+        "$SCRIPT_DIR/centerstage-height.sh" "$2"
+        ;;
+    layout)
+        "$SCRIPT_DIR/centerstage-left-layout.sh" "$2"
+        ;;
+    ratio)
+        "$SCRIPT_DIR/centerstage-left-ratio.sh" "$2"
+        ;;
+    gap)
+        "$SCRIPT_DIR/centerstage-obsidian-gap.sh" "$2"
+        ;;
+    pbp)
+        "$SCRIPT_DIR/centerstage-pbp-toggle.sh"
+        ;;
+    pip)
+        "$SCRIPT_DIR/centerstage-pip.sh"
+        ;;
+    shrink)
+        "$SCRIPT_DIR/centerstage-shrink-toggle.sh"
+        ;;
+    retile)
+        zone="${2:-all}"
+        workspace=$(hyprctl activeworkspace -j | jq -r .id)
+        if [[ "$zone" == "all" ]]; then
+            "$SCRIPT_DIR/centerstage-retile.sh" left "$workspace"
+            "$SCRIPT_DIR/centerstage-retile.sh" right "$workspace"
+            "$SCRIPT_DIR/centerstage-retile.sh" center "$workspace"
+        else
+            "$SCRIPT_DIR/centerstage-retile.sh" "$zone" "$workspace"
+        fi
+        ;;
+    save)
+        "$SCRIPT_DIR/centerstage-save.sh"
+        ;;
+    restore)
+        "$SCRIPT_DIR/centerstage-restore.sh"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run 'centerstage help' for usage"
+        exit 1
+        ;;
+esac
