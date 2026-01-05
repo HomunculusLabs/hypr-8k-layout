@@ -20,6 +20,12 @@ RIGHT_WIDTH_FILE="$STATE_DIR/centerstage-right-width"
 LEFT_LAYOUT_FILE="$STATE_DIR/centerstage-left-layout"
 LEFT_PRIMARY_RATIO_FILE="$STATE_DIR/centerstage-left-primary-ratio"
 OBSIDIAN_GAP_FILE="$STATE_DIR/centerstage-obsidian-gap"
+PBP_MODE_FILE="$STATE_DIR/centerstage-pbp-mode"
+PBP_SAVED_FILE="$STATE_DIR/centerstage-pbp-saved"
+
+# PBP mode constants
+PBP_GAP_IN=50
+PBP_SCREEN_WIDTH=3840
 
 # Read current state into global variables
 read_state() {
@@ -50,13 +56,42 @@ read_state() {
     [[ -z "$obsidian_extra_gap" || "$obsidian_extra_gap" == "null" ]] && obsidian_extra_gap=540
 }
 
+# Check if PBP mode is active
+is_pbp_mode() {
+    [[ -f "$PBP_MODE_FILE" ]] && [[ "$(cat "$PBP_MODE_FILE")" == "on" ]]
+}
+
 # Calculate zone dimensions
 # Usage: read -r zone_x zone_width tag <<< "$(get_zone_dimensions left)"
 get_zone_dimensions() {
     local zone=$1
     read_state
 
-    # Center is always fixed and centered
+    # PBP mode: sidebars fill 4K half, center zone unavailable
+    if is_pbp_mode; then
+        # Center zone doesn't exist in PBP mode
+        if [[ "$zone" == "center" ]]; then
+            echo "0 0 centerstage-center"
+            return
+        fi
+
+        # Split 3840px between left and right sidebars
+        local usable_width=$((PBP_SCREEN_WIDTH - 2 * EDGE_MARGIN))
+        local half_width=$(( (usable_width - PBP_GAP_IN) / 2 ))
+
+        local left_x=$EDGE_MARGIN
+        local left_width=$half_width
+        local right_x=$((left_x + half_width + PBP_GAP_IN))
+        local right_width=$half_width
+
+        case "$zone" in
+            left)   echo "$left_x $left_width centerstage-left" ;;
+            right)  echo "$right_x $right_width centerstage-right" ;;
+        esac
+        return
+    fi
+
+    # Normal mode: Center is always fixed and centered
     local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
 
     # Calculate sidebar widths using full available space
@@ -163,6 +198,9 @@ calculate_required_sidebar_width() {
 # Get left sidebar layout mode
 # Returns: single | obsidian-grid | grid-obsidian | equal-split
 get_left_layout_mode() {
+    # Force single mode in PBP mode (simpler layout for 4K half)
+    is_pbp_mode && { echo "single"; return; }
+
     local mode="single"
     [[ -f "$LEFT_LAYOUT_FILE" ]] && mode=$(cat "$LEFT_LAYOUT_FILE")
     echo "$mode"
@@ -196,9 +234,9 @@ get_left_subcolumn_dimensions() {
     local layout_mode=$(get_left_layout_mode)
 
     if [[ "$layout_mode" == "grid-obsidian" ]]; then
-        # grid-obsidian: secondary (grid) on left with fixed width matching right sidebar column
+        # grid-obsidian: secondary (grid) on left, slightly wider than right sidebar column
         local right_col_width=$(get_right_column_width)
-        local sec_width=$right_col_width
+        local sec_width=$(( right_col_width * 1025 / 1000 ))  # 1.025x for htop
         local sec_x=$left_x
         local prim_x=$(( left_x + sec_width + GAP_IN ))
 
