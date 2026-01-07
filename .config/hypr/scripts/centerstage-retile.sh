@@ -20,7 +20,8 @@ if [[ "$ZONE" == "left" ]]; then
         if [[ ${#prim_windows[@]} -gt 0 ]]; then
             for addr in "${prim_windows[@]}"; do
                 [[ -z "$addr" ]] && continue
-                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $prim_width $TOTAL_HEIGHT ; dispatch moveactive exact $prim_x $ZONE_Y"
+                hyprctl dispatch resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
             done
         fi
 
@@ -58,7 +59,78 @@ if [[ "$ZONE" == "left" ]]; then
                     x=$(( sec_x + col * (cell_width + GAP_IN) ))
                     y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
                 fi
-                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+                hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+    hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+                ((i++))
+            done
+        fi
+
+        exit 0
+    fi
+fi
+
+# Check for sub-column layouts in right sidebar (terminal-grid mode)
+if [[ "$ZONE" == "right" ]]; then
+    layout_mode=$(get_right_layout_mode)
+    if [[ "$layout_mode" == "terminal-grid" ]]; then
+        # Retile primary sub-column (terminals stacked vertically)
+        read -r prim_x prim_width prim_tag <<< "$(get_right_subcolumn_dimensions primary)"
+        mapfile -t prim_windows < <(hyprctl clients -j | jq -r \
+            ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$prim_tag\")) != null) | .address")
+
+        prim_count=${#prim_windows[@]}
+        if [[ $prim_count -gt 0 ]]; then
+            if [[ $prim_count -eq 1 ]]; then
+                prim_height=$TOTAL_HEIGHT
+            else
+                prim_height=$(( (TOTAL_HEIGHT - (prim_count - 1) * GAP_IN) / prim_count ))
+            fi
+            i=0
+            for addr in "${prim_windows[@]}"; do
+                [[ -z "$addr" ]] && continue
+                y=$(( ZONE_Y + i * (prim_height + GAP_IN) ))
+                hyprctl dispatch resizewindowpixel "exact $prim_width $prim_height,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $prim_x $y,address:$addr"
+                ((i++))
+            done
+        fi
+
+        # Retile secondary sub-column (grid layout for other windows)
+        read -r sec_x sec_width sec_tag <<< "$(get_right_subcolumn_dimensions secondary)"
+        mapfile -t sec_windows < <(hyprctl clients -j | jq -r \
+            ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$sec_tag\")) != null) | .address")
+
+        sec_count=${#sec_windows[@]}
+        if [[ $sec_count -gt 0 ]]; then
+            read -r cols rows <<< "$(calculate_grid $sec_count)"
+
+            if [[ $cols -eq 1 ]]; then
+                cell_width=$sec_width
+                if [[ $sec_count -eq 1 ]]; then
+                    cell_height=$TOTAL_HEIGHT
+                else
+                    total_gap=$(( (sec_count - 1) * GAP_IN ))
+                    cell_height=$(( (TOTAL_HEIGHT - total_gap) / sec_count ))
+                fi
+            else
+                cell_width=$(( (sec_width - (cols - 1) * GAP_IN) / cols ))
+                cell_height=$(( (TOTAL_HEIGHT - (rows - 1) * GAP_IN) / rows ))
+            fi
+
+            i=0
+            for addr in "${sec_windows[@]}"; do
+                [[ -z "$addr" ]] && continue
+                if [[ $cols -eq 1 ]]; then
+                    x=$sec_x
+                    y=$(( ZONE_Y + i * (cell_height + GAP_IN) ))
+                else
+                    col=$(( i % cols ))
+                    row=$(( i / cols ))
+                    x=$(( sec_x + col * (cell_width + GAP_IN) ))
+                    y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
+                fi
+                hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
                 ((i++))
             done
         fi
@@ -128,7 +200,8 @@ for addr in "${windows[@]}"; do
         y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
     fi
 
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+    hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
 
     # Assign position tag for right sidebar (1-indexed)
     if [[ "$ZONE" == "right" ]]; then

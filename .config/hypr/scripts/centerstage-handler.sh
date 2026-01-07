@@ -85,13 +85,13 @@ handle_window_open() {
         obsidian)
             echo "DEBUG: Obsidian detected, switching to obsidian-grid layout"
             echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
-            ~/.config/hypr/scripts/centerstage-move.sh left-primary
+            ~/.config/hypr/scripts/centerstage-move.sh left-primary "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
         org.gnome.Nautilus)
             echo "DEBUG: Moving $class to left sidebar"
-            ~/.config/hypr/scripts/centerstage-move.sh left
+            ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
@@ -99,12 +99,14 @@ handle_window_open() {
 
     # Count existing center-stage windows in this workspace
     local center_count=$(count_zone_windows "centerstage-center" "$workspace")
+
+    # Count right sidebar
     local right_count=$(count_zone_windows "centerstage-right" "$workspace")
 
     # Count left sidebar (including sub-columns in split mode)
-    local layout_mode=$(get_left_layout_mode)
+    local left_layout=$(get_left_layout_mode)
     local left_count
-    if [[ "$layout_mode" != "single" ]]; then
+    if [[ "$left_layout" != "single" ]]; then
         local prim_count=$(count_zone_windows "centerstage-left-primary" "$workspace")
         local sec_count=$(count_zone_windows "centerstage-left-secondary" "$workspace")
         left_count=$((prim_count + sec_count))
@@ -112,20 +114,32 @@ handle_window_open() {
         left_count=$(count_zone_windows "centerstage-left" "$workspace")
     fi
 
-    echo "DEBUG: center=$center_count left=$left_count right=$right_count layout=$layout_mode"
+    echo "DEBUG: center=$center_count left=$left_count right=$right_count left_layout=$left_layout right_layout=$right_layout"
 
     if [[ "$center_count" -eq 0 ]]; then
-        echo "DEBUG: Moving to center"
-        ~/.config/hypr/scripts/centerstage-move.sh center
+        if is_pbp_mode; then
+            echo "DEBUG: PBP mode active, moving to right instead of center"
+            ~/.config/hypr/scripts/centerstage-move.sh right "$addr"
+        else
+            echo "DEBUG: Moving to center"
+            ~/.config/hypr/scripts/centerstage-move.sh center "$addr"
+        fi
     elif [[ "$right_count" -lt 9 ]]; then
-        echo "DEBUG: Moving to right"
-        ~/.config/hypr/scripts/centerstage-move.sh right
+        # Check if terminal-grid mode is active
+        local right_layout=$(get_right_layout_mode)
+        if [[ "$right_layout" == "terminal-grid" ]]; then
+            echo "DEBUG: Moving to right-secondary (terminal-grid mode)"
+            ~/.config/hypr/scripts/centerstage-move.sh right-secondary "$addr"
+        else
+            echo "DEBUG: Moving to right"
+            ~/.config/hypr/scripts/centerstage-move.sh right "$addr"
+        fi
     elif [[ "$left_count" -lt 9 ]]; then
         echo "DEBUG: Right full, moving to left"
-        ~/.config/hypr/scripts/centerstage-move.sh left
+        ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
     else
         echo "DEBUG: Sidebars full, stacking on center"
-        ~/.config/hypr/scripts/centerstage-move.sh center
+        ~/.config/hypr/scripts/centerstage-move.sh center "$addr"
     fi
 
     apply_shrink_if_needed "$workspace"
