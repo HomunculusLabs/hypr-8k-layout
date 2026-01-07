@@ -175,15 +175,20 @@ if [[ -z "$SOCKET" ]]; then
 fi
 
 # Listen to Hyprland socket for window events using socat
-socat -U - "UNIX-CONNECT:$SOCKET" | while read -r line; do
-    # Parse event: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
-    if [[ "$line" == openwindow\>\>* ]]; then
-        # Extract address (first field after >>)
-        addr="0x${line#openwindow>>}"
-        addr="${addr%%,*}"
-        handle_window_open "$addr"
-    # Parse event: closewindow>>ADDRESS
-    elif [[ "$line" == closewindow\>\>* ]]; then
-        handle_window_close
-    fi
+# Reconnect loop - restarts socat if connection drops
+while true; do
+    socat -U - "UNIX-CONNECT:$SOCKET" 2>/dev/null | while read -r line; do
+        # Parse event: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
+        if [[ "$line" == openwindow\>\>* ]]; then
+            # Extract address (first field after >>)
+            addr="0x${line#openwindow>>}"
+            addr="${addr%%,*}"
+            handle_window_open "$addr"
+        # Parse event: closewindow>>ADDRESS
+        elif [[ "$line" == closewindow\>\>* ]]; then
+            handle_window_close
+        fi
+    done
+    echo "DEBUG: socat disconnected, reconnecting in 1s..."
+    sleep 1
 done
