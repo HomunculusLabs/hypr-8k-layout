@@ -142,9 +142,9 @@ fi
 # Get zone parameters (standard single-column mode)
 read -r ZONE_X ZONE_WIDTH TAG <<< "$(get_zone_dimensions "$ZONE")"
 
-# Get all windows in this zone and workspace
+# Get all windows in this zone and workspace, sorted by position (row then column)
 mapfile -t windows < <(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$TAG\")) != null) | .address")
+    "[.[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$TAG\")) != null)] | sort_by(.at[1], .at[0]) | .[].address")
 
 count=${#windows[@]}
 
