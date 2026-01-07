@@ -17,23 +17,25 @@ COMMANDS:
     status               Show current layout state
 
     move <zone>          Move active window to zone
-                         Zones: left, center, right, left-primary, left-secondary
+                         Zones: left, center, right, left-primary, left-secondary,
+                                right-primary, right-secondary
 
-    focus <zone>         Focus a zone (left, center, right)
-    swap [zone]          Swap windows between zones
+    focus <pos>          Focus window by position
+                         Positions: 0 = center, 1-9 = right sidebar
+    swap <dir>           Swap or move windows
+                         Directions: up, down, left, right
     swap-primary         Swap left-primary with center
 
     resize               Cycle center window width
-    sidebar              Cycle sidebar balance (left ↔ right)
-    height <up|down>     Adjust window heights
+    sidebar              Cycle sidebar balance
+    height               Cycle center window height
 
-    layout <mode>        Set left sidebar layout
-                         Modes: single, split, obsidian-grid
-    ratio <+|-|value>    Adjust left column ratio
-    gap <+|-|value>      Adjust obsidian gap
+    layout               Cycle left sidebar layout
+    ratio <inc|dec>      Adjust left column ratio (increase/decrease)
+    gap <inc|dec>        Adjust obsidian gap (increase/decrease)
 
     pbp                  Toggle picture-by-picture mode
-    pip                  Toggle picture-in-picture
+    pip [corner] [size]  Avoid PIP overlay (tr/tl/br/bl, small/medium/large)
     shrink               Toggle auto-shrink mode
 
     retile [zone]        Retile zone(s) - left, right, center, or all
@@ -45,8 +47,9 @@ COMMANDS:
 EXAMPLES:
     centerstage move center
     centerstage resize
-    centerstage layout obsidian-grid
-    centerstage gap +50
+    centerstage layout
+    centerstage gap increase
+    centerstage pip tr small
 EOF
 }
 
@@ -96,7 +99,9 @@ case "${1:-help}" in
         "$SCRIPT_DIR/centerstage-move.sh" "${2:-center}"
         ;;
     focus)
-        "$SCRIPT_DIR/centerstage-focus.sh" "${2:-center}"
+        focus_pos="${2:-0}"
+        [[ "$focus_pos" == "center" ]] && focus_pos="0"
+        "$SCRIPT_DIR/centerstage-focus.sh" "$focus_pos"
         ;;
     swap)
         "$SCRIPT_DIR/centerstage-swap.sh" "$2"
@@ -111,22 +116,34 @@ case "${1:-help}" in
         "$SCRIPT_DIR/centerstage-sidebar.sh"
         ;;
     height)
-        "$SCRIPT_DIR/centerstage-height.sh" "$2"
+        "$SCRIPT_DIR/centerstage-height.sh"
         ;;
     layout)
-        "$SCRIPT_DIR/centerstage-left-layout.sh" "$2"
+        "$SCRIPT_DIR/centerstage-left-layout.sh"
         ;;
     ratio)
-        "$SCRIPT_DIR/centerstage-left-ratio.sh" "$2"
+        ratio_dir="${2:-}"
+        case "$ratio_dir" in
+            +) ratio_dir="increase" ;;
+            -) ratio_dir="decrease" ;;
+        esac
+        "$SCRIPT_DIR/centerstage-left-ratio.sh" "$ratio_dir"
         ;;
     gap)
-        "$SCRIPT_DIR/centerstage-obsidian-gap.sh" "$2"
+        gap_dir="${2:-}"
+        case "$gap_dir" in
+            +) gap_dir="increase" ;;
+            -) gap_dir="decrease" ;;
+        esac
+        "$SCRIPT_DIR/centerstage-obsidian-gap.sh" "$gap_dir"
         ;;
     pbp)
         "$SCRIPT_DIR/centerstage-pbp-toggle.sh"
         ;;
     pip)
-        "$SCRIPT_DIR/centerstage-pip.sh"
+        corner="${2:-tr}"
+        size="${3:-small}"
+        "$SCRIPT_DIR/centerstage-pip.sh" "$corner" "$size"
         ;;
     shrink)
         "$SCRIPT_DIR/centerstage-shrink-toggle.sh"
@@ -147,6 +164,9 @@ case "${1:-help}" in
         ;;
     restore)
         "$SCRIPT_DIR/centerstage-restore.sh"
+        ;;
+    startup)
+        "$SCRIPT_DIR/centerstage-startup.sh"
         ;;
     help|--help|-h)
         show_help
