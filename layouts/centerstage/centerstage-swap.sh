@@ -168,23 +168,52 @@ handle_horizontal() {
     local retile_source="$current_zone"
     local retile_target=""
 
+    # Handle left sidebar sub-columns based on visual position
+    # grid-obsidian: secondary(LEFT) | primary(RIGHT) | center
+    # obsidian-grid: primary(LEFT) | secondary(RIGHT) | center
     case "$current_zone" in
         left-primary)
-            if [[ "$dir" == "right" ]]; then
-                target_zone="left-secondary"
-                retile_source="left"
-                retile_target="left"
+            if [[ "$layout_mode" == "grid-obsidian" ]]; then
+                # primary is visually RIGHT of secondary
+                if [[ "$dir" == "left" ]]; then
+                    target_zone="left-secondary"
+                    retile_source="left"
+                    retile_target="left"
+                elif [[ "$dir" == "right" ]]; then
+                    target_zone="center"
+                    retile_source="left"
+                    retile_target="center"
+                fi
+            else
+                # obsidian-grid/equal-split: primary is visually LEFT
+                if [[ "$dir" == "right" ]]; then
+                    target_zone="left-secondary"
+                    retile_source="left"
+                    retile_target="left"
+                fi
+                # left from primary = at edge
             fi
             ;;
         left-secondary)
-            if [[ "$dir" == "left" ]]; then
-                target_zone="left-primary"
-                retile_source="left"
-                retile_target="left"
-            elif [[ "$dir" == "right" ]]; then
-                target_zone="center"
-                retile_source="left"
-                retile_target="center"
+            if [[ "$layout_mode" == "grid-obsidian" ]]; then
+                # secondary is visually LEFT (at edge)
+                if [[ "$dir" == "right" ]]; then
+                    target_zone="left-primary"
+                    retile_source="left"
+                    retile_target="left"
+                fi
+                # left from secondary = at edge
+            else
+                # obsidian-grid/equal-split: secondary is visually RIGHT
+                if [[ "$dir" == "left" ]]; then
+                    target_zone="left-primary"
+                    retile_source="left"
+                    retile_target="left"
+                elif [[ "$dir" == "right" ]]; then
+                    target_zone="center"
+                    retile_source="left"
+                    retile_target="center"
+                fi
             fi
             ;;
         left)
@@ -195,7 +224,12 @@ handle_horizontal() {
             ;;
         center)
             if [[ "$dir" == "left" ]]; then
-                if [[ "$layout_mode" != "single" ]]; then
+                if [[ "$layout_mode" == "grid-obsidian" ]]; then
+                    # In grid-obsidian, primary is adjacent to center
+                    target_zone="left-primary"
+                    retile_target="left"
+                elif [[ "$layout_mode" != "single" ]]; then
+                    # In obsidian-grid, secondary is adjacent to center
                     target_zone="left-secondary"
                     retile_target="left"
                 else
