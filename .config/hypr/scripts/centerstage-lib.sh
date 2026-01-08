@@ -206,6 +206,15 @@ get_left_layout_mode() {
     echo "$mode"
 }
 
+# Get right sidebar layout mode
+# Returns: single | terminal-grid
+get_right_layout_mode() {
+    local mode="single"
+    [[ -f "$STATE_DIR/centerstage-right-layout" ]] && mode=$(cat "$STATE_DIR/centerstage-right-layout")
+    [[ "$mode" == "default" ]] && mode="single"
+    echo "$mode"
+}
+
 # Calculate right sidebar column width (for matching in left sidebar)
 get_right_column_width() {
     read_state

@@ -14,14 +14,14 @@ layout=$(hyprctl clients -j | jq '[
     .[] |
     select(.workspace.id >= 1 and .workspace.id <= 3) |
     select(.tags != null) |
-    select((.tags | index("centerstage-left")) or (.tags | index("centerstage-center")) or (.tags | index("centerstage-right"))) |
+    select((.tags | any(startswith("centerstage-left"))) or (.tags | index("centerstage-center")) or (.tags | any(startswith("centerstage-right")))) |
     {
         workspace: .workspace.id,
         class: .class,
         zone: (
-            if (.tags | index("centerstage-left")) then "left"
+            if (.tags | any(startswith("centerstage-left"))) then "left"
             elif (.tags | index("centerstage-center")) then "center"
-            elif (.tags | index("centerstage-right")) then "right"
+            elif (.tags | any(startswith("centerstage-right"))) then "right"
             else null
             end
         )

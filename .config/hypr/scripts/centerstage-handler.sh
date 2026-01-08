@@ -83,15 +83,21 @@ handle_window_open() {
     # Apps that should always go to left sidebar
     case "$class" in
         obsidian)
-            echo "DEBUG: Obsidian detected, switching to obsidian-grid layout"
+            echo "DEBUG: Obsidian detected, moving to left-secondary"
             echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
-            ~/.config/hypr/scripts/centerstage-move.sh left-primary "$addr"
+            ~/.config/hypr/scripts/centerstage-move.sh left-secondary "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
         org.gnome.Nautilus)
             echo "DEBUG: Moving $class to left sidebar"
             ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
+            apply_shrink_if_needed "$workspace"
+            return
+            ;;
+        org.omarchy.btop)
+            echo "DEBUG: btop detected, forcing to left-primary (leftmost)"
+            ~/.config/hypr/scripts/centerstage-move.sh left-primary "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
