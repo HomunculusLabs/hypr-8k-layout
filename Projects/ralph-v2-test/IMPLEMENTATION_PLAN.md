@@ -55,7 +55,7 @@
 
 - [x] Add zod schema validation for JSON parsing [014-add-schema-validation.md]
 - [x] Review schema validation implementation [021-review-schema-validation.md]
-- [ ] Fix type coercion bugs (boolean/date) [015-fix-type-coercion.md]
+- [x] Fix type coercion bugs (boolean/date) [015-fix-type-coercion.md]
 - [ ] Review type coercion fixes [022-review-type-coercion.md]
 - [ ] Consolidate duplicate directory walkers [016-dry-directory-walker.md]
 - [ ] Review directory walker consolidation [023-review-directory-walker.md]
@@ -114,6 +114,11 @@
 - [ ] Review types documentation [058-review-docs-types.md]
 - [ ] Write CLI entry point documentation [044-docs-cli-entry.md]
 - [ ] Review CLI entry documentation [059-review-docs-cli-entry.md]
+
+## Priority 12 - Integration Testing
+
+- [ ] Create integration test suite with test vault fixture [061-integration-test-suite.md]
+- [ ] Review integration test suite [062-review-integration-tests.md]
 
 ---
 

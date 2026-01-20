@@ -1,5 +1,6 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { coerceBool, coerceDate } from "./coerce";
 import { readNote } from "./markdown/files";
 import { parseSections } from "./markdown/sections";
 import { parseWikilinks } from "./markdown/wikilinks";
@@ -527,7 +528,7 @@ function resolveIncomePotential(frontmatter: Record<string, unknown>): boolean {
 		frontmatter.income ??
 		frontmatter.income_potential ??
 		frontmatter.incomePotential;
-	return value === true;
+	return coerceBool(value);
 }
 
 function scoreProject(input: {
@@ -772,9 +773,7 @@ function coerceDateInput(value: unknown): Date | null {
 	if (typeof value === "string") {
 		const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
 		if (!match) return null;
-		const [year, month, day] = match[1].split("-").map(Number);
-		if (!year || !month || !day) return null;
-		return new Date(year, month - 1, day);
+		return coerceDate(match[1]);
 	}
 	return null;
 }
