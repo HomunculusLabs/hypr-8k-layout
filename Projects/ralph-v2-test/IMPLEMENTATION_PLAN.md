@@ -23,7 +23,7 @@
 
 - [x] Stale Todo Detector [002-stale-todo-detector.md]
 - [x] Broken Link Checker [003-broken-link-checker.md]
-- [ ] Frontmatter Linter [004-frontmatter-linter.md]
+- [x] Frontmatter Linter [004-frontmatter-linter.md]
 
 ## Priority 3 - Intelligence & Automation
 

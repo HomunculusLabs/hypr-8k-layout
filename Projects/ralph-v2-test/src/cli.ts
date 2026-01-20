@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { runDailyPopulate } from "./commands/daily-populate";
+import { runFrontmatterLint } from "./commands/lint";
 import { runLinkCheck } from "./commands/link-check";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
@@ -138,6 +139,27 @@ program
 			exclude: options.exclude,
 			suggest: options.suggest,
 			createStubs: options.createStubs,
+		});
+	});
+
+program
+	.command("lint")
+	.description("Lint frontmatter against configured schemas")
+	.option("--path <path>", "Lint a specific folder")
+	.option("--fix", "Auto-fix issues where possible")
+	.option("--dry-run", "Show changes without writing")
+	.option("--output <mode>", "Output mode (console, json, report)", "report")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runFrontmatterLint({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			outputMode: options.output,
+			path: options.path,
+			fix: options.fix,
+			dryRun: options.dryRun,
 		});
 	});
 

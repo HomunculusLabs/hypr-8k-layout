@@ -5,6 +5,28 @@ import { parse } from "yaml";
 
 export type OutputFormat = "console" | "json" | "markdown";
 
+export type FrontmatterFieldType = "string" | "date" | "enum" | "array";
+
+export interface FrontmatterSchemaField {
+	type: FrontmatterFieldType;
+	required?: boolean;
+	values?: string[];
+	default?: unknown;
+}
+
+export interface FrontmatterSchemaMatch {
+	folder?: string;
+	filename?: string;
+	frontmatter?: Record<string, unknown>;
+}
+
+export interface FrontmatterSchema {
+	match?: FrontmatterSchemaMatch;
+	fields: Record<string, FrontmatterSchemaField>;
+}
+
+export type FrontmatterSchemas = Record<string, FrontmatterSchema>;
+
 export interface VaultToolsConfig {
 	vault: {
 		path: string;
@@ -18,6 +40,7 @@ export interface VaultToolsConfig {
 		color: boolean;
 		verbose: boolean;
 	};
+	schemas: FrontmatterSchemas;
 }
 
 export interface CliOverrides {
@@ -40,6 +63,7 @@ const DEFAULT_CONFIG: VaultToolsConfig = {
 		color: true,
 		verbose: false,
 	},
+	schemas: {},
 };
 
 export async function loadConfig(
@@ -145,6 +169,7 @@ function mergeWithDefaults(parsed: Record<string, unknown>): VaultToolsConfig {
 		(typeof parsed.output === "object" && parsed.output !== null
 			? parsed.output
 			: legacy.output) ?? {};
+	const schemas = normalizeSchemas(parsed.schemas);
 
 	return {
 		vault: {
@@ -182,6 +207,7 @@ function mergeWithDefaults(parsed: Record<string, unknown>): VaultToolsConfig {
 					? (output as Record<string, unknown>).verbose
 					: DEFAULT_CONFIG.output.verbose,
 		},
+		schemas,
 	};
 }
 
@@ -264,6 +290,68 @@ function applyCliOverrides(
 
 function isOutputFormat(value: unknown): value is OutputFormat {
 	return value === "console" || value === "json" || value === "markdown";
+}
+
+function normalizeSchemas(raw: unknown): FrontmatterSchemas {
+	if (!raw || typeof raw !== "object") {
+		return {};
+	}
+
+	const schemas: FrontmatterSchemas = {};
+	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+		if (!value || typeof value !== "object") continue;
+		const schema = value as Record<string, unknown>;
+		const fields: Record<string, FrontmatterSchemaField> = {};
+		const fieldsRaw =
+			typeof schema.fields === "object" && schema.fields !== null
+				? (schema.fields as Record<string, unknown>)
+				: {};
+
+		for (const [fieldName, fieldValue] of Object.entries(fieldsRaw)) {
+			if (!fieldValue || typeof fieldValue !== "object") continue;
+			const field = fieldValue as Record<string, unknown>;
+			if (!isFrontmatterFieldType(field.type)) continue;
+			const values = Array.isArray(field.values)
+				? field.values.filter((item): item is string => typeof item === "string")
+				: undefined;
+			fields[fieldName] = {
+				type: field.type,
+				required: field.required === true,
+				values,
+				default: field.default,
+			};
+		}
+
+		if (Object.keys(fields).length === 0) continue;
+
+		schemas[key] = {
+			match: normalizeSchemaMatch(schema.match),
+			fields,
+		};
+	}
+
+	return schemas;
+}
+
+function normalizeSchemaMatch(raw: unknown): FrontmatterSchemaMatch | undefined {
+	if (!raw || typeof raw !== "object") return undefined;
+	const match = raw as Record<string, unknown>;
+	const frontmatter =
+		typeof match.frontmatter === "object" && match.frontmatter !== null
+			? (match.frontmatter as Record<string, unknown>)
+			: undefined;
+
+	return {
+		folder: typeof match.folder === "string" ? match.folder : undefined,
+		filename: typeof match.filename === "string" ? match.filename : undefined,
+		frontmatter,
+	};
+}
+
+function isFrontmatterFieldType(
+	value: unknown,
+): value is FrontmatterFieldType {
+	return value === "string" || value === "date" || value === "enum" || value === "array";
 }
 
 async function validateVaultPath(vaultPath: string): Promise<void> {
