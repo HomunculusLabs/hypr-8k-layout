@@ -15,7 +15,7 @@
 
 ## Priority 1 - Core Utilities (Immediately Useful)
 
-- [ ] Shopping List Auto-Sync [001-shopping-list-auto-sync.md]
+- [x] Shopping List Auto-Sync [001-shopping-list-auto-sync.md]
 - [ ] Daily Note Auto-Populator [006-daily-note-auto-populator.md]
 - [ ] Template CLI [009-template-cli.md]
 
