@@ -123,7 +123,7 @@
 ## Priority 13 - Obsidian Plugin Conversion
 
 - [x] Plugin scaffold with manifest, main.ts, esbuild, settings [063-plugin-scaffold.md]
-- [ ] Vault adapter abstraction for file operations [064-vault-adapter.md]
+- [x] Vault adapter abstraction for file operations [064-vault-adapter.md]
 - [ ] Right sidebar view shell [065-sidebar-view.md]
 - [ ] Port analysis commands (stats, link-check, lint) [066-port-analysis-commands.md]
 - [ ] Port todo commands (stale-check, ralph-queue, shopping-sync) [067-port-todo-commands.md]
