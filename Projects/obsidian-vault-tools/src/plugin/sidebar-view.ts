@@ -1,4 +1,6 @@
 import { ItemView, type WorkspaceLeaf, setIcon } from 'obsidian';
+import type { LinkCheckResult } from '../lib/link-check';
+import type { FrontmatterLintResult } from '../lib/lint';
 import type VaultToolsPlugin from './main';
 
 export const VIEW_TYPE_VAULT_TOOLS = 'vault-tools-view';
@@ -128,7 +130,138 @@ export class VaultToolsSidebarView extends ItemView {
     }
   }
 
+  showLinkCheckResult(result: LinkCheckResult): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Files scanned: ${result.filesScanned}, broken links: ${result.brokenLinks.length}`,
+    });
+
+    if (result.brokenLinks.length === 0) {
+      container.createDiv({
+        cls: 'vault-tools-output-placeholder',
+        text: 'No broken links found.',
+      });
+      return;
+    }
+
+    const grouped = this.groupBySource(result.brokenLinks);
+    for (const [sourcePath, links] of grouped) {
+      const group = container.createDiv({ cls: 'vault-tools-output-group' });
+      const header = group.createEl('button', {
+        cls: 'vault-tools-link',
+        text: sourcePath,
+      });
+      header.addEventListener('click', () => {
+        void this.plugin.openNote(sourcePath);
+      });
+
+      for (const link of links) {
+        const row = group.createDiv({ cls: 'vault-tools-output-row' });
+        const lineLabel = `Line ${link.line}: ${link.raw}`;
+        const lineButton = row.createEl('button', {
+          cls: 'vault-tools-link',
+          text: lineLabel,
+        });
+        lineButton.addEventListener('click', () => {
+          void this.plugin.openNote(sourcePath, link.line);
+        });
+
+        const detail = row.createDiv({ cls: 'vault-tools-output-detail' });
+        if (link.reason === 'missing-heading' && link.heading) {
+          detail.setText(`Missing heading #${link.heading}`);
+        } else if (link.suggestions.length > 0) {
+          detail.setText(`Suggestion: ${link.suggestions.join(', ')}`);
+        } else if (link.stubCreated) {
+          detail.setText('Stub note created');
+        } else {
+          detail.setText('Missing file');
+        }
+      }
+    }
+  }
+
+  showLintResult(result: FrontmatterLintResult): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Files scanned: ${result.filesScanned}, issues: ${result.issues.length}`,
+    });
+
+    if (result.issues.length === 0) {
+      container.createDiv({
+        cls: 'vault-tools-output-placeholder',
+        text: 'No frontmatter issues found.',
+      });
+      return;
+    }
+
+    const grouped = this.groupLintIssues(result.issues);
+    for (const [filePath, issues] of grouped) {
+      const group = container.createDiv({ cls: 'vault-tools-output-group' });
+      const header = group.createEl('button', {
+        cls: 'vault-tools-link',
+        text: filePath,
+      });
+      header.addEventListener('click', () => {
+        void this.plugin.openNote(filePath);
+      });
+
+      for (const issue of issues) {
+        const row = group.createDiv({ cls: 'vault-tools-output-row' });
+        const fieldLabel = issue.field ? `(${issue.field})` : '';
+        row.createDiv({
+          cls: `vault-tools-output-detail vault-tools-severity-${issue.severity}`,
+          text: `${issue.severity.toUpperCase()} ${fieldLabel} ${issue.message}`,
+        });
+
+        const detailParts = [];
+        if (issue.expected) detailParts.push(`expected: ${issue.expected}`);
+        if (issue.actual) detailParts.push(`actual: ${issue.actual}`);
+        if (detailParts.length > 0) {
+          row.createDiv({
+            cls: 'vault-tools-output-detail',
+            text: detailParts.join(', '),
+          });
+        }
+      }
+    }
+  }
+
   private formatNumber(value: number): string {
     return value.toLocaleString();
+  }
+
+  private groupBySource(
+    links: LinkCheckResult['brokenLinks'],
+  ): Map<string, LinkCheckResult['brokenLinks']> {
+    const grouped = new Map<string, LinkCheckResult['brokenLinks']>();
+    const sorted = [...links].sort((a, b) =>
+      a.sourcePath.localeCompare(b.sourcePath),
+    );
+    for (const link of sorted) {
+      const list = grouped.get(link.sourcePath) ?? [];
+      list.push(link);
+      grouped.set(link.sourcePath, list);
+    }
+    return grouped;
+  }
+
+  private groupLintIssues(
+    issues: FrontmatterLintResult['issues'],
+  ): Map<string, FrontmatterLintResult['issues']> {
+    const grouped = new Map<string, FrontmatterLintResult['issues']>();
+    for (const issue of issues) {
+      const list = grouped.get(issue.filePath) ?? [];
+      list.push(issue);
+      grouped.set(issue.filePath, list);
+    }
+    return grouped;
   }
 }

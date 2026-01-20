@@ -64,3 +64,58 @@
   white-space: pre-wrap;
   font-size: 0.85em;
 }
+
+.vault-tools-output-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.85em;
+}
+
+.vault-tools-output-summary {
+  color: var(--text-muted);
+}
+
+.vault-tools-output-group {
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-tools-output-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vault-tools-link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: var(--text-accent);
+  cursor: pointer;
+}
+
+.vault-tools-link:hover {
+  text-decoration: underline;
+}
+
+.vault-tools-output-detail {
+  color: var(--text-muted);
+}
+
+.vault-tools-severity-error {
+  color: var(--text-error);
+}
+
+.vault-tools-severity-warning {
+  color: var(--text-warning);
+}
+
+.vault-tools-severity-info {
+  color: var(--text-muted);
+}

@@ -1,6 +1,11 @@
 import { Notice, Plugin } from 'obsidian';
-import { createObsidianAdapter } from '../lib/adapters';
+import { parse } from 'yaml';
+import { createObsidianAdapter, type VaultAdapter } from '../lib/adapters';
+import { checkBrokenLinks } from '../lib/link-check';
+import { lintFrontmatter } from '../lib/lint';
+import { vaultToolsConfigSchema } from '../lib/schemas';
 import { buildVaultStats } from '../lib/stats';
+import type { FrontmatterSchemas } from '../types';
 import { DEFAULT_SETTINGS, type VaultToolsSettings, VaultToolsSettingTab } from './settings';
 import { VaultToolsSidebarView, VIEW_TYPE_VAULT_TOOLS } from './sidebar-view';
 
@@ -12,10 +17,14 @@ export interface QuickStats {
 }
 
 export default class VaultToolsPlugin extends Plugin {
+  private adapter: VaultAdapter;
+  private schemas: FrontmatterSchemas = {};
   settings: VaultToolsSettings;
 
   async onload(): Promise<void> {
+    this.adapter = createObsidianAdapter(this.app);
     await this.loadSettings();
+    this.schemas = await this.loadSchemasFromConfig();
 
     this.registerView(VIEW_TYPE_VAULT_TOOLS, (leaf) => new VaultToolsSidebarView(leaf, this));
 
@@ -60,9 +69,8 @@ export default class VaultToolsPlugin extends Plugin {
   }
 
   async getQuickStats(): Promise<QuickStats> {
-    const adapter = createObsidianAdapter(this.app);
     const stats = await buildVaultStats({
-      adapter,
+      adapter: this.adapter,
       vaultPath: '',
       rootPath: '',
       reportPath: '',
@@ -105,11 +113,61 @@ export default class VaultToolsPlugin extends Plugin {
   }
 
   runLinkCheck(): void {
-    this.showPlaceholderOutput('Link Check');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Link Check.');
+      return;
+    }
+
+    view.showOutput('Running link check...');
+    void (async () => {
+      try {
+        const result = await checkBrokenLinks({
+          adapter: this.adapter,
+          vaultPath: '',
+          reportPath: '',
+          outputMode: 'console',
+          excludePatterns: [],
+          suggest: true,
+          createStubs: false,
+        });
+        view.showLinkCheckResult(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to run link check.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   runLint(): void {
-    this.showPlaceholderOutput('Lint');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Lint.');
+      return;
+    }
+
+    view.showOutput('Running lint...');
+    void (async () => {
+      try {
+        this.schemas = await this.loadSchemasFromConfig();
+        const result = await lintFrontmatter({
+          adapter: this.adapter,
+          vaultPath: '',
+          rootPath: '',
+          reportPath: '',
+          outputMode: 'console',
+          fix: false,
+          dryRun: true,
+          schemas: this.schemas,
+        });
+        view.showLintResult(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to run lint.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   runStaleCheck(): void {
@@ -142,5 +200,32 @@ export default class VaultToolsPlugin extends Plugin {
     if (!leaf) return null;
     const view = leaf.view;
     return view instanceof VaultToolsSidebarView ? view : null;
+  }
+
+  async openNote(path: string, line?: number): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!file) {
+      new Notice(`Vault Tools: note not found (${path}).`);
+      return;
+    }
+    const leaf = this.app.workspace.getLeaf(false);
+    await leaf.openFile(file as any, {
+      active: true,
+      state: line ? { line } : undefined,
+      eState: line ? { line } : undefined,
+    });
+  }
+
+  private async loadSchemasFromConfig(): Promise<FrontmatterSchemas> {
+    const configPath = 'vault-tools.config.yaml';
+    const exists = await this.adapter.fileExists(configPath);
+    if (!exists) return {};
+    const raw = await this.adapter.readFile(configPath);
+    const parsed = parse(raw);
+    const result = vaultToolsConfigSchema.partial().safeParse(parsed ?? {});
+    if (!result.success) {
+      throw new Error(`Invalid config: ${result.error.message}`);
+    }
+    return result.data.schemas ?? {};
   }
 }
