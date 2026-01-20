@@ -24,22 +24,6 @@ function colorize(
 	return `${TYPE_COLOR[type]}${text}${COLORS.reset}`;
 }
 
-function formatItem(item: OutputItem, options: OutputOptions): string[] {
-	const label = item.type.toUpperCase();
-	const header = `${colorize(label, item.type, options.color)} ${item.message}`;
-	const lines = [header];
-	if (options.verbose) {
-		if (item.details) {
-			lines.push(`  ${item.details}`);
-		}
-		if (item.file) {
-			const line = typeof item.line === "number" ? `:${item.line}` : "";
-			lines.push(`  at ${item.file}${line}`);
-		}
-	}
-	return lines;
-}
-
 export function formatConsole(
 	items: OutputItem[],
 	options: OutputOptions,
@@ -49,27 +33,21 @@ export function formatConsole(
 		? items.filter((item) => item.type === "error")
 		: items;
 	if (filtered.length === 0) return "";
-	return filtered.flatMap((item) => formatItem(item, options)).join("\n");
-}
-
-export function log(message: string, type: OutputItem["type"] = "info"): void {
-	const output = formatConsole([{ type, message }], {
-		format: "console",
-		color: true,
-		verbose: false,
-		quiet: false,
-	});
-	if (output) console.log(output);
-}
-
-export function success(message: string): void {
-	log(message, "success");
-}
-
-export function warn(message: string): void {
-	log(message, "warning");
-}
-
-export function error(message: string): void {
-	log(message, "error");
+	return filtered
+		.flatMap((item) => {
+			const label = item.type.toUpperCase();
+			const header = `${colorize(label, item.type, options.color)} ${item.message}`;
+			const lines = [header];
+			if (options.verbose) {
+				if (item.details) {
+					lines.push(`  ${item.details}`);
+				}
+				if (item.file) {
+					const line = typeof item.line === "number" ? `:${item.line}` : "";
+					lines.push(`  at ${item.file}${line}`);
+				}
+			}
+			return lines;
+		})
+		.join("\n");
 }

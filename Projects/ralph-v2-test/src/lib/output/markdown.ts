@@ -1,11 +1,7 @@
 import type { OutputItem } from "./types";
 
-function summarize(items: OutputItem[]): {
-	total: number;
-	errors: number;
-	warnings: number;
-} {
-	return items.reduce(
+export function formatMarkdown(items: OutputItem[], title?: string): string {
+	const summary = items.reduce(
 		(acc, item) => {
 			acc.total += 1;
 			if (item.type === "error") acc.errors += 1;
@@ -14,22 +10,6 @@ function summarize(items: OutputItem[]): {
 		},
 		{ total: 0, errors: 0, warnings: 0 },
 	);
-}
-
-function formatDetails(item: OutputItem): string {
-	const parts = [`- [${item.type.toUpperCase()}] ${item.message}`];
-	if (item.file) {
-		const line = typeof item.line === "number" ? `:${item.line}` : "";
-		parts.push(`  - File: ${item.file}${line}`);
-	}
-	if (item.details) {
-		parts.push(`  - Details: ${item.details}`);
-	}
-	return parts.join("\n");
-}
-
-export function formatMarkdown(items: OutputItem[], title?: string): string {
-	const summary = summarize(items);
 	const lines: string[] = [];
 
 	if (title) {
@@ -47,6 +27,20 @@ export function formatMarkdown(items: OutputItem[], title?: string): string {
 		return lines.join("\n");
 	}
 
-	lines.push(items.map((item) => formatDetails(item)).join("\n"));
+	lines.push(
+		items
+			.map((item) => {
+				const parts = [`- [${item.type.toUpperCase()}] ${item.message}`];
+				if (item.file) {
+					const line = typeof item.line === "number" ? `:${item.line}` : "";
+					parts.push(`  - File: ${item.file}${line}`);
+				}
+				if (item.details) {
+					parts.push(`  - Details: ${item.details}`);
+				}
+				return parts.join("\n");
+			})
+			.join("\n"),
+	);
 	return lines.join("\n");
 }

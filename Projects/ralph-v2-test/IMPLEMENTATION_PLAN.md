@@ -37,7 +37,7 @@
 
 ## Priority 5 - Refinement (clean, readable, lightweight)
 
-- [ ] Refactor src/lib/ shared utilities [011-refine-lib.md]
+- [x] Refactor src/lib/ shared utilities [011-refine-lib.md]
 - [ ] Refactor config parser [011-refine-lib.md]
 - [ ] Refactor shopping-sync command [012-refine-commands.md]
 - [ ] Refactor daily-populate command [012-refine-commands.md]

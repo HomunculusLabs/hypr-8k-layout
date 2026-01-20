@@ -3,20 +3,18 @@ import YAML from "yaml";
 export interface ParsedNote {
 	frontmatter: Record<string, unknown>;
 	content: string;
-	raw: string;
 }
 
 export function parseNote(content: string): ParsedNote {
-	const raw = content;
 	const lines = content.split("\n");
 
 	if (lines[0] !== "---") {
-		return { frontmatter: {}, content, raw };
+		return { frontmatter: {}, content };
 	}
 
 	const endIndex = lines.indexOf("---", 1);
 	if (endIndex === -1) {
-		return { frontmatter: {}, content, raw };
+		return { frontmatter: {}, content };
 	}
 
 	const frontmatterText = lines.slice(1, endIndex).join("\n");
@@ -26,7 +24,7 @@ export function parseNote(content: string): ParsedNote {
 	}
 
 	const body = lines.slice(endIndex + 1).join("\n");
-	return { frontmatter, content: body, raw };
+	return { frontmatter, content: body };
 }
 
 export function serializeNote(note: ParsedNote): string {
