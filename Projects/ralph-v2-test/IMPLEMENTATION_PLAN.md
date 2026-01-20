@@ -76,7 +76,7 @@
 
 ## Priority 9 - Documentation Infrastructure
 
-- [ ] Set up docs folder structure and vault symlink [028-docs-infrastructure.md]
+- [x] Set up docs folder structure and vault symlink [028-docs-infrastructure.md]
 - [ ] Review docs infrastructure [060-review-docs-infrastructure.md]
 
 ## Priority 10 - Command Documentation
