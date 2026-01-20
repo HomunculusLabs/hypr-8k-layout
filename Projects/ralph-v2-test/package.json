@@ -1,0 +1,21 @@
+{
+	"name": "vault-tools",
+	"version": "0.1.0",
+	"type": "module",
+	"bin": "./src/cli.ts",
+	"scripts": {
+		"dev": "bun run src/cli.ts",
+		"build": "bun build src/cli.ts --compile --outfile vault-tools",
+		"test": "bun test",
+		"lint": "bun run biome check ."
+	},
+	"dependencies": {
+		"commander": "^12.0.0",
+		"yaml": "^2.4.0",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"bun-types": "latest"
+	}
+}

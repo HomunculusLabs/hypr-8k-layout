@@ -51,6 +51,70 @@
 - [x] Refactor stats command [012-refine-commands.md]
 - [x] Final cleanup: remove dead code, consolidate types [013-final-cleanup.md]
 
+## Priority 6 - Code Review Fixes (High Priority)
+
+- [x] Add zod schema validation for JSON parsing [014-add-schema-validation.md]
+- [ ] Review schema validation implementation [021-review-schema-validation.md]
+- [ ] Fix type coercion bugs (boolean/date) [015-fix-type-coercion.md]
+- [ ] Review type coercion fixes [022-review-type-coercion.md]
+- [ ] Consolidate duplicate directory walkers [016-dry-directory-walker.md]
+- [ ] Review directory walker consolidation [023-review-directory-walker.md]
+
+## Priority 7 - Code Review Fixes (Medium Priority)
+
+- [ ] Performance: cache regexes, abstract error handling [017-performance-improvements.md]
+- [ ] Review performance improvements [024-review-performance.md]
+- [ ] Add edge case tests (symlinks, YAML, dates) [018-edge-case-tests.md]
+- [ ] Review edge case tests [025-review-edge-tests.md]
+- [ ] Consolidate magic strings and constants [019-consolidate-constants.md]
+- [ ] Review constants consolidation [026-review-constants.md]
+
+## Priority 8 - Architecture Documentation
+
+- [ ] Add README and ARCHITECTURE.md [020-architecture-docs.md]
+- [ ] Review architecture documentation [027-review-architecture-docs.md]
+
+## Priority 9 - Documentation Infrastructure
+
+- [ ] Set up docs folder structure and vault symlink [028-docs-infrastructure.md]
+- [ ] Review docs infrastructure [060-review-docs-infrastructure.md]
+
+## Priority 10 - Command Documentation
+
+- [ ] Write stats command documentation [030-docs-stats.md]
+- [ ] Review stats documentation [045-review-docs-stats.md]
+- [ ] Write project-health command documentation [031-docs-project-health.md]
+- [ ] Review project-health documentation [046-review-docs-project-health.md]
+- [ ] Write lint command documentation [032-docs-lint.md]
+- [ ] Review lint documentation [047-review-docs-lint.md]
+- [ ] Write daily-populate command documentation [033-docs-daily-populate.md]
+- [ ] Review daily-populate documentation [048-review-docs-daily-populate.md]
+- [ ] Write weekly-rollup command documentation [034-docs-weekly-rollup.md]
+- [ ] Review weekly-rollup documentation [049-review-docs-weekly-rollup.md]
+- [ ] Write ralph-queue command documentation [035-docs-ralph-queue.md]
+- [ ] Review ralph-queue documentation [050-review-docs-ralph-queue.md]
+- [ ] Write template command documentation [036-docs-template.md]
+- [ ] Review template documentation [051-review-docs-template.md]
+- [ ] Write shopping-sync command documentation [037-docs-shopping-sync.md]
+- [ ] Review shopping-sync documentation [052-review-docs-shopping-sync.md]
+- [ ] Write stale-check command documentation [038-docs-stale-check.md]
+- [ ] Review stale-check documentation [053-review-docs-stale-check.md]
+- [ ] Write link-check command documentation [039-docs-link-check.md]
+- [ ] Review link-check documentation [054-review-docs-link-check.md]
+
+## Priority 11 - Library Documentation
+
+- [ ] Write config module documentation [040-docs-config.md]
+- [ ] Review config documentation [055-review-docs-config.md]
+- [ ] Write markdown utilities documentation [041-docs-markdown-utils.md]
+- [ ] Review markdown utilities documentation [056-review-docs-markdown-utils.md]
+- [ ] Write output formatters documentation [042-docs-output-formatters.md]
+- [ ] Review output formatters documentation [057-review-docs-output-formatters.md]
+- [ ] Write types documentation [043-docs-types.md]
+- [ ] Review types documentation [058-review-docs-types.md]
+- [ ] Write CLI entry point documentation [044-docs-cli-entry.md]
+- [ ] Review CLI entry documentation [059-review-docs-cli-entry.md]
+
 ---
 
 ## Implementation Order Rationale

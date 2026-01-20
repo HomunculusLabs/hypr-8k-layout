@@ -4,6 +4,7 @@ import type { FrontmatterSchema, FrontmatterSchemas } from "../types";
 import { findMarkdownFiles } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 import { parseWikilinks } from "./markdown/wikilinks";
+import { vaultStatsSchema } from "./schemas";
 
 export type StatsSection =
 	| "counts"
@@ -284,7 +285,21 @@ export async function compareStats(
 	comparePath: string,
 ): Promise<VaultStatsComparison> {
 	const raw = await readFile(comparePath, "utf8");
-	const parsed = JSON.parse(raw) as Partial<VaultStatsResult>;
+	let parsedJson: unknown;
+	try {
+		parsedJson = JSON.parse(raw);
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : "Unknown JSON parse error";
+		throw new Error(`Invalid stats file ${comparePath}: ${message}`);
+	}
+	const parsedResult = vaultStatsSchema.partial().safeParse(parsedJson);
+	if (!parsedResult.success) {
+		throw new Error(
+			`Invalid stats file ${comparePath}: ${parsedResult.error.message}`,
+		);
+	}
+	const parsed = parsedResult.data;
 	const previousTotals = parsed.totals ?? {
 		notes: 0,
 		words: 0,
