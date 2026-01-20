@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { runDailyPopulate } from "./commands/daily-populate";
-import { runFrontmatterLint } from "./commands/lint";
 import { runLinkCheck } from "./commands/link-check";
+import { runFrontmatterLint } from "./commands/lint";
+import { runRalphQueue } from "./commands/ralph-queue";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
 import { runTemplateCreate, runTemplateList } from "./commands/template";
@@ -230,6 +231,31 @@ templateCommand
 			open: options.open,
 			postCommand: options.post,
 			gitAdd: options.gitAdd,
+		});
+	});
+
+program
+	.command("ralph-queue")
+	.description("Build a Ralph task queue from actionable todos")
+	.option("--output <mode>", "Output mode (console, queue, json)", "console")
+	.option("--max-tasks <count>", "Maximum tasks to queue", Number.parseInt)
+	.option("--time-budget <budget>", "Time budget (e.g., 4h, 90m)")
+	.option("--project <name>", "Filter by project name")
+	.option("--include-low-priority", "Include low priority todos")
+	.option("--explain", "Include score breakdowns")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runRalphQueue({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			output: options.output,
+			maxTasks: options.maxTasks,
+			timeBudget: options.timeBudget,
+			project: options.project,
+			includeLowPriority: options.includeLowPriority,
+			explain: options.explain,
 		});
 	});
 

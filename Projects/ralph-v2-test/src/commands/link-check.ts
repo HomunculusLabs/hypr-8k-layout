@@ -224,9 +224,7 @@ function normalizeExcludePatterns(patterns?: string[]): string[] {
 function matchesExclude(filePath: string, patterns: string[]): boolean {
 	if (patterns.length === 0) return false;
 	const normalized = filePath.replaceAll("\\", "/").toLowerCase();
-	return patterns.some((pattern) =>
-		normalized.includes(pattern.toLowerCase()),
-	);
+	return patterns.some((pattern) => normalized.includes(pattern.toLowerCase()));
 }
 
 function buildFileIndexes(files: string[], vaultPath: string): FileIndexes {
@@ -519,7 +517,9 @@ function buildReport(result: LinkCheckResult): string {
 		for (const link of links) {
 			lines.push(`- Line ${link.line}: \`${link.raw}\``);
 			if (link.reason === "missing-heading" && link.heading) {
-				lines.push(`  - File exists but heading \`#${link.heading}\` not found`);
+				lines.push(
+					`  - File exists but heading \`#${link.heading}\` not found`,
+				);
 			} else if (link.suggestions.length > 0) {
 				lines.push(
 					`  - Suggestion: Did you mean ${formatSuggestions(link.suggestions)}?`,

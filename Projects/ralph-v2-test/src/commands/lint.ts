@@ -9,7 +9,7 @@ import {
 	loadConfig,
 } from "../lib/config";
 import { findMarkdownFiles, writeNote } from "../lib/markdown/files";
-import { parseNote } from "../lib/markdown/frontmatter";
+import { type ParsedNote, parseNote } from "../lib/markdown/frontmatter";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 
 export type LintOutputMode = "console" | "report" | "json";
@@ -157,7 +157,7 @@ export async function lintFrontmatter(
 
 	for (const filePath of markdownFiles) {
 		const content = await readFile(filePath, "utf8");
-		let note;
+		let note: ParsedNote;
 		try {
 			note = parseNote(content);
 		} catch (error) {
@@ -400,7 +400,10 @@ function validateFieldValue(
 	definition: FrontmatterSchemaField,
 	value: unknown,
 	allowFix: boolean,
-): { issue?: Omit<FrontmatterLintIssue, "filePath" | "noteType" | "field">; updated?: unknown } {
+): {
+	issue?: Omit<FrontmatterLintIssue, "filePath" | "noteType" | "field">;
+	updated?: unknown;
+} {
 	if (definition.type === "string") {
 		if (typeof value !== "string") {
 			return {
@@ -537,7 +540,10 @@ function formatDate(date: Date): string {
 function findClosestValue(input: string, values: string[]): string | null {
 	let best: { value: string; distance: number } | null = null;
 	for (const value of values) {
-		const distance = levenshteinDistance(input.toLowerCase(), value.toLowerCase());
+		const distance = levenshteinDistance(
+			input.toLowerCase(),
+			value.toLowerCase(),
+		);
 		if (!best || distance < best.distance) {
 			best = { value, distance };
 		}
@@ -588,7 +594,8 @@ function formatValue(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (value === undefined) return "undefined";
 	if (value === null) return "null";
-	if (Array.isArray(value)) return `[${value.map((item) => String(item)).join(", ")}]`;
+	if (Array.isArray(value))
+		return `[${value.map((item) => String(item)).join(", ")}]`;
 	return String(value);
 }
 

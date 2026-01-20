@@ -312,7 +312,9 @@ function normalizeSchemas(raw: unknown): FrontmatterSchemas {
 			const field = fieldValue as Record<string, unknown>;
 			if (!isFrontmatterFieldType(field.type)) continue;
 			const values = Array.isArray(field.values)
-				? field.values.filter((item): item is string => typeof item === "string")
+				? field.values.filter(
+						(item): item is string => typeof item === "string",
+					)
 				: undefined;
 			fields[fieldName] = {
 				type: field.type,
@@ -333,7 +335,9 @@ function normalizeSchemas(raw: unknown): FrontmatterSchemas {
 	return schemas;
 }
 
-function normalizeSchemaMatch(raw: unknown): FrontmatterSchemaMatch | undefined {
+function normalizeSchemaMatch(
+	raw: unknown,
+): FrontmatterSchemaMatch | undefined {
 	if (!raw || typeof raw !== "object") return undefined;
 	const match = raw as Record<string, unknown>;
 	const frontmatter =
@@ -348,10 +352,13 @@ function normalizeSchemaMatch(raw: unknown): FrontmatterSchemaMatch | undefined 
 	};
 }
 
-function isFrontmatterFieldType(
-	value: unknown,
-): value is FrontmatterFieldType {
-	return value === "string" || value === "date" || value === "enum" || value === "array";
+function isFrontmatterFieldType(value: unknown): value is FrontmatterFieldType {
+	return (
+		value === "string" ||
+		value === "date" ||
+		value === "enum" ||
+		value === "array"
+	);
 }
 
 async function validateVaultPath(vaultPath: string): Promise<void> {

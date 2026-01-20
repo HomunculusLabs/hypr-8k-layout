@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { lintFrontmatter } from "./lint";
 import { readNote } from "../lib/markdown/files";
+import { lintFrontmatter } from "./lint";
 
 async function setupVault(): Promise<string> {
 	return await mkdtemp(path.join(tmpdir(), "vault-tools-lint-"));
