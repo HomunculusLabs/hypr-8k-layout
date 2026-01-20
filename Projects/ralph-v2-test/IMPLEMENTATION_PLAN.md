@@ -96,7 +96,7 @@
 - [x] Write template command documentation [036-docs-template.md]
 - [x] Review template documentation [051-review-docs-template.md]
 - [x] Write shopping-sync command documentation [037-docs-shopping-sync.md]
-- [ ] Review shopping-sync documentation [052-review-docs-shopping-sync.md]
+- [x] Review shopping-sync documentation [052-review-docs-shopping-sync.md]
 - [ ] Write stale-check command documentation [038-docs-stale-check.md]
 - [ ] Review stale-check documentation [053-review-docs-stale-check.md]
 - [ ] Write link-check command documentation [039-docs-link-check.md]
