@@ -20,7 +20,14 @@ export function parseNote(content: string): ParsedNote {
 	const frontmatterText = lines.slice(1, endIndex).join("\n");
 	let frontmatter: Record<string, unknown> = {};
 	if (frontmatterText.trim().length > 0) {
-		frontmatter = YAML.parse(frontmatterText) as Record<string, unknown>;
+		try {
+			const parsed = YAML.parse(frontmatterText) as Record<string, unknown>;
+			if (parsed && typeof parsed === "object") {
+				frontmatter = parsed;
+			}
+		} catch {
+			frontmatter = {};
+		}
 	}
 
 	const body = lines.slice(endIndex + 1).join("\n");

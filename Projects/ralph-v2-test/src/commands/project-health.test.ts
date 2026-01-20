@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { buildProjectHealth } from "./project-health";
+import { buildProjectHealth, runProjectHealth } from "./project-health";
 
 async function setupVault(): Promise<{
 	vaultPath: string;
@@ -142,4 +142,64 @@ status: active
 
 	expect(result.projects.length).toBe(1);
 	expect(result.projects[0]?.status).toBe("archived");
+});
+
+test("follows symlinks to markdown files", async () => {
+	const { vaultPath, projectsPath, todosPath } = await setupVault();
+
+	const realNotePath = path.join(vaultPath, "Real.md");
+	await writeFile(
+		realNotePath,
+		note(`
+---
+status: active
+---
+`),
+	);
+	await symlink(realNotePath, path.join(projectsPath, "Linked.md"));
+
+	const result = await buildProjectHealth({
+		projectsPath,
+		todosPath,
+		now: new Date(2026, 0, 19),
+	});
+
+	expect(result.summary.total).toBe(1);
+});
+
+test("handles circular symlinks without hanging", async () => {
+	const { projectsPath, todosPath } = await setupVault();
+	const loopDir = path.join(projectsPath, "Loop");
+	await mkdir(loopDir, { recursive: true });
+	await symlink(loopDir, path.join(loopDir, "loop"));
+
+	const result = await buildProjectHealth({
+		projectsPath,
+		todosPath,
+		now: new Date(2026, 0, 19),
+	});
+
+	expect(result.summary.total).toBe(0);
+});
+
+test("skips broken symlinks gracefully", async () => {
+	const { projectsPath, todosPath } = await setupVault();
+	await symlink("/nonexistent/path.md", path.join(projectsPath, "Broken.md"));
+
+	const result = await buildProjectHealth({
+		projectsPath,
+		todosPath,
+		now: new Date(2026, 0, 19),
+	});
+
+	expect(result.summary.total).toBe(0);
+});
+
+test("reports invalid vault path errors", async () => {
+	process.exitCode = 0;
+	await runProjectHealth({
+		vaultPath: "/nonexistent/vault-path",
+	});
+	expect(process.exitCode).toBe(1);
+	process.exitCode = 0;
 });

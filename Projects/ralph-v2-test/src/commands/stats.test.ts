@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { buildVaultStats } from "./stats";
+import { buildVaultStats, runStats } from "./stats";
 
 async function setupVault(): Promise<string> {
 	return mkdtemp(path.join(tmpdir(), "vault-tools-"));
@@ -122,4 +122,22 @@ Missing required status field.
 	expect(result.frontmatter.fieldUsage.status).toBe(2);
 	expect(result.frontmatter.enumDistributions.project.active).toBe(1);
 	expect(result.frontmatter.missingRequired.project.status).toBe(1);
+});
+
+test("runStats handles non-existent vault path", async () => {
+	process.exitCode = 0;
+	await runStats({ vaultPath: "/nonexistent/vault-path" });
+	expect(process.exitCode).toBe(1);
+	process.exitCode = 0;
+});
+
+test("runStats handles vault path that is a file", async () => {
+	const vaultPath = await setupVault();
+	const filePath = path.join(vaultPath, "not-a-dir.txt");
+	await writeFile(filePath, "");
+
+	process.exitCode = 0;
+	await runStats({ vaultPath: filePath });
+	expect(process.exitCode).toBe(1);
+	process.exitCode = 0;
 });

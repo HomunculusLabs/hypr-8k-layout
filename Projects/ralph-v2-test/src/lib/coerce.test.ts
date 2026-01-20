@@ -22,6 +22,18 @@ describe("coerceDate", () => {
 		expect(d?.getMonth()).toBe(5);
 		expect(d?.getDate()).toBe(15);
 	});
+	it("handles leap years", () => {
+		expect(coerceDate("2024-02-29")).not.toBeNull();
+		expect(coerceDate("2023-02-29")).toBeNull();
+	});
+	it("handles year boundaries", () => {
+		expect(coerceDate("2024-12-31")).not.toBeNull();
+		expect(coerceDate("2025-01-01")).not.toBeNull();
+	});
+	it("handles month boundaries", () => {
+		expect(coerceDate("2024-01-31")).not.toBeNull();
+		expect(coerceDate("2024-04-31")).toBeNull();
+	});
 	it("rejects invalid month", () =>
 		expect(coerceDate("2024-13-01")).toBeNull());
 	it("rejects invalid day", () =>
