@@ -104,8 +104,8 @@
 
 ## Priority 11 - Library Documentation
 
-- [ ] Write config module documentation [040-docs-config.md]
-- [ ] Review config documentation [055-review-docs-config.md]
+- [x] Write config module documentation [040-docs-config.md]
+- [x] Review config documentation [055-review-docs-config.md]
 - [ ] Write markdown utilities documentation [041-docs-markdown-utils.md]
 - [ ] Review markdown utilities documentation [056-review-docs-markdown-utils.md]
 - [ ] Write output formatters documentation [042-docs-output-formatters.md]
