@@ -17,7 +17,7 @@ export interface WeeklyRollupPaths {
 	now?: Date;
 }
 
-export interface WeeklyRollupResult {
+export interface WeeklyRollupReport {
 	reportPath: string;
 	markdown: string;
 	startDate: string;
@@ -34,10 +34,27 @@ export interface WeeklyRollupResult {
 	totalDays: number;
 }
 
+export interface WeeklyRollupResult {
+	path: string;
+	daysIncluded: number;
+	missingDays: string[];
+	tasksCompleted: number;
+	highlights: string[];
+}
+
 export interface WeeklyRollupRangeOptions {
 	week?: string;
 	start?: string;
 	end?: string;
+}
+
+export interface WeeklyRollupOptions {
+	dailyFolder: string;
+	outputFolder?: string;
+	week?: string;
+	startDate?: Date;
+	endDate?: Date;
+	todosFolder?: string;
 }
 
 interface CompletionItem {
@@ -66,10 +83,11 @@ const DONE_MARKER = /^\*\*done:\*\*/i;
 const HEADING_MARKER = /^#{1,6}\s/;
 const EMPHASIS_MARKER = /^\*\*.+\*\*$/;
 const CHECKBOX_PATTERN = /^(\s*)([-*])\s+\[( |x|X)\]\s*(.*)$/;
+const DEFAULT_WEEKLY_OUTPUT_FOLDER = "1 - Rough Notes/Weekly";
 
 export async function buildWeeklyRollup(
 	paths: WeeklyRollupPaths,
-): Promise<WeeklyRollupResult> {
+): Promise<WeeklyRollupReport> {
 	const now = paths.now ?? new Date();
 	const label = resolveLabel(paths.startDate, paths.endDate);
 	const rangeDates = enumerateDates(paths.startDate, paths.endDate);
@@ -163,6 +181,31 @@ export async function buildWeeklyRollup(
 	};
 }
 
+export async function generateWeeklyRollup(
+	adapter: VaultAdapter,
+	options: WeeklyRollupOptions,
+): Promise<WeeklyRollupResult> {
+	const { start, end } = resolveWeekRange(options);
+	const outputPath = resolveOutputPath(options);
+	const report = await buildWeeklyRollup({
+		adapter,
+		vaultPath: "",
+		todosPath: options.todosFolder ?? "",
+		dailyPath: options.dailyFolder,
+		outputPath,
+		startDate: formatDate(start),
+		endDate: formatDate(end),
+	});
+
+	return {
+		path: report.reportPath,
+		daysIncluded: Math.max(0, report.totalDays - report.missingDays.length),
+		missingDays: report.missingDays,
+		tasksCompleted: report.completedCount,
+		highlights: [],
+	};
+}
+
 export function resolveWeeklyRollupRange(options: WeeklyRollupRangeOptions): {
 	startDate: string;
 	endDate: string;
@@ -194,6 +237,38 @@ export function resolveWeeklyRollupRange(options: WeeklyRollupRangeOptions): {
 	const start = startOfIsoWeek(year, week);
 	const end = addDays(start, 6);
 	return { startDate: formatDate(start), endDate: formatDate(end) };
+}
+
+function resolveWeekRange(options: WeeklyRollupOptions): {
+	start: Date;
+	end: Date;
+} {
+	if (options.startDate || options.endDate) {
+		if (!options.startDate || !options.endDate) {
+			throw new Error("Both startDate and endDate are required.");
+		}
+		if (options.startDate > options.endDate) {
+			throw new Error("Start date must be before end date.");
+		}
+		return { start: options.startDate, end: options.endDate };
+	}
+
+	if (options.week) {
+		const { year, week } = parseIsoWeek(options.week);
+		const start = startOfIsoWeek(year, week);
+		const end = addDays(start, 6);
+		return { start, end };
+	}
+
+	const today = new Date();
+	const { year, week } = isoWeekFromDate(today);
+	const start = startOfIsoWeek(year, week);
+	const end = addDays(start, 6);
+	return { start, end };
+}
+
+function resolveOutputPath(options: WeeklyRollupOptions): string {
+	return options.outputFolder ?? DEFAULT_WEEKLY_OUTPUT_FOLDER;
 }
 
 function resolveLabel(startDate: string, endDate: string): string {
@@ -389,6 +464,7 @@ async function collectCompletedTodos(
 	startDate: string,
 	endDate: string,
 ): Promise<CompletionItem[]> {
+	if (!todosPath) return [];
 	const todoFiles = await findMarkdownFiles(adapter, todosPath);
 	const items: CompletionItem[] = [];
 	const start = dateFromYmd(startDate);

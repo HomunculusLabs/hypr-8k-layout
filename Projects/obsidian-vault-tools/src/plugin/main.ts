@@ -1,6 +1,8 @@
+import path from 'node:path';
 import { Notice, Plugin } from 'obsidian';
 import { parse } from 'yaml';
 import { createObsidianAdapter, type VaultAdapter } from '../lib/adapters';
+import { populateDailyNote } from '../lib/daily-populate';
 import { checkBrokenLinks } from '../lib/link-check';
 import { lintFrontmatter } from '../lib/lint';
 import { buildRalphQueue } from '../lib/ralph-queue';
@@ -8,6 +10,7 @@ import { vaultToolsConfigSchema } from '../lib/schemas';
 import { syncShoppingList } from '../lib/shopping-sync';
 import { checkStaleTodos } from '../lib/stale-check';
 import { buildVaultStats } from '../lib/stats';
+import { generateWeeklyRollup } from '../lib/weekly-rollup';
 import type { FrontmatterSchemas } from '../types';
 import { DEFAULT_SETTINGS, type VaultToolsSettings, VaultToolsSettingTab } from './settings';
 import { VaultToolsSidebarView, VIEW_TYPE_VAULT_TOOLS } from './sidebar-view';
@@ -21,6 +24,7 @@ export interface QuickStats {
 
 const DEFAULT_RALPH_MAX_TASKS = 5;
 const SHOPPING_LIST_PATH = 'Shopping List.md';
+const DAILY_TEMPLATE_FILE = 'daily-notes.md';
 
 export default class VaultToolsPlugin extends Plugin {
   private adapter: VaultAdapter;
@@ -45,6 +49,22 @@ export default class VaultToolsPlugin extends Plugin {
       name: 'Show vault statistics',
       callback: () => {
         void this.runStats();
+      },
+    });
+
+    this.addCommand({
+      id: 'populate-daily',
+      name: "Populate today's daily note",
+      callback: () => {
+        void this.runDailyPopulate();
+      },
+    });
+
+    this.addCommand({
+      id: 'generate-weekly-rollup',
+      name: 'Generate weekly rollup',
+      callback: () => {
+        void this.runWeeklyRollup();
       },
     });
   }
@@ -201,6 +221,43 @@ export default class VaultToolsPlugin extends Plugin {
 
   runProjectHealth(): void {
     this.showPlaceholderOutput('Project Health');
+  }
+
+  async runDailyPopulate(): Promise<void> {
+    try {
+      const result = await populateDailyNote(this.adapter, {
+        dailyFolder: this.settings.dailyFolder,
+        todosFolder: this.settings.todosFolder,
+        projectsFolder: this.settings.projectsFolder,
+        templatePath: path.join(this.settings.templatesFolder, DAILY_TEMPLATE_FILE),
+        create: true,
+      });
+      new Notice(`Daily note populated: ${result.sectionsAdded.length} sections`);
+      await this.app.workspace.openLinkText(result.path, '');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to populate daily note.';
+      new Notice(message);
+    }
+  }
+
+  async runWeeklyRollup(): Promise<void> {
+    try {
+      const result = await generateWeeklyRollup(this.adapter, {
+        dailyFolder: this.settings.dailyFolder,
+        todosFolder: this.settings.todosFolder,
+      });
+      if (result.missingDays.length > 0) {
+        new Notice(`Weekly rollup generated (missing: ${result.missingDays.join(', ')})`);
+      } else {
+        new Notice('Weekly rollup generated');
+      }
+      await this.app.workspace.openLinkText(result.path, '');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to generate weekly rollup.';
+      new Notice(message);
+    }
   }
 
   runRalphQueue(): void {

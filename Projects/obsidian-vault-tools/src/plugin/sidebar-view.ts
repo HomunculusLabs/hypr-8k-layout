@@ -91,6 +91,16 @@ export class VaultToolsSidebarView extends ItemView {
       { name: 'Lint', icon: 'check-circle', action: () => this.plugin.runLint() },
       { name: 'Stale Todos', icon: 'clock', action: () => this.plugin.runStaleCheck() },
       {
+        name: 'Daily Populate',
+        icon: 'calendar-plus',
+        action: () => this.plugin.runDailyPopulate(),
+      },
+      {
+        name: 'Weekly Rollup',
+        icon: 'calendar-range',
+        action: () => this.plugin.runWeeklyRollup(),
+      },
+      {
         name: 'Project Health',
         icon: 'activity',
         action: () => this.plugin.runProjectHealth(),

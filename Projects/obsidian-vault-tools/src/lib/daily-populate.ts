@@ -18,7 +18,24 @@ export interface DailyPopulatePaths {
 	skip?: Set<string>;
 }
 
+export interface DailyPopulateOptions {
+	dailyFolder: string;
+	todosFolder: string;
+	date?: Date;
+	create?: boolean;
+	skipSections?: string[];
+	projectsFolder?: string;
+	templatePath?: string;
+}
+
 export interface DailyPopulateResult {
+	path: string;
+	sectionsAdded: string[];
+	tasksRolledOver: number;
+	created: boolean;
+}
+
+export interface DailyPopulateLegacyResult {
 	notePath: string;
 	focusItems: number;
 	blockedItems: number;
@@ -54,9 +71,61 @@ const SECTION_BLOCKED = "Blocked";
 const FOCUS_PLACEHOLDER = "- Nothing scheduled";
 const ROLLOVER_INTRO = "<!-- Rolled over from yesterday -->";
 
-export async function populateDailyNote(
+const SECTION_KEYS = [
+	{ key: "focus", label: SECTION_FOCUS },
+	{ key: "blocked", label: SECTION_BLOCKED },
+	{ key: "ralph", label: SECTION_RALPH },
+	{ key: "tasks", label: SECTION_TASKS },
+];
+
+export function populateDailyNote(
+	adapter: VaultAdapter,
+	options: DailyPopulateOptions,
+): Promise<DailyPopulateResult>;
+export function populateDailyNote(
 	paths: DailyPopulatePaths,
+): Promise<DailyPopulateLegacyResult>;
+export async function populateDailyNote(
+	adapterOrPaths: VaultAdapter | DailyPopulatePaths,
+	options?: DailyPopulateOptions,
+): Promise<DailyPopulateResult | DailyPopulateLegacyResult> {
+	if (options) {
+		return populateDailyNoteWithAdapter(adapterOrPaths as VaultAdapter, options);
+	}
+	return populateDailyNoteLegacy(adapterOrPaths as DailyPopulatePaths);
+}
+
+async function populateDailyNoteWithAdapter(
+	adapter: VaultAdapter,
+	options: DailyPopulateOptions,
 ): Promise<DailyPopulateResult> {
+	const skip = normalizeSkipSections(options.skipSections);
+	if (!options.projectsFolder) {
+		skip.add("ralph");
+	}
+	const legacy = await populateDailyNoteLegacy({
+		adapter,
+		vaultPath: "",
+		todosPath: options.todosFolder,
+		projectsPath: options.projectsFolder ?? "",
+		dailyPath: options.dailyFolder,
+		templatePath: options.templatePath ?? "",
+		date: formatDate(options.date ?? new Date()),
+		create: options.create,
+		skip,
+	});
+
+	return {
+		path: legacy.notePath,
+		sectionsAdded: resolveSectionsAdded(skip),
+		tasksRolledOver: legacy.rolloverItems,
+		created: legacy.created,
+	};
+}
+
+async function populateDailyNoteLegacy(
+	paths: DailyPopulatePaths,
+): Promise<DailyPopulateLegacyResult> {
 	const warnings: string[] = [];
 	const targetDate = normalizeDateInput(paths.date);
 	if (!targetDate) {
@@ -164,6 +233,33 @@ export function formatDate(date: Date): string {
 	const month = pad(date.getMonth() + 1);
 	const day = pad(date.getDate());
 	return `${year}-${month}-${day}`;
+}
+
+function normalizeSkipSections(skipSections?: string[]): Set<string> {
+	const skip = new Set<string>();
+	for (const raw of skipSections ?? []) {
+		const value = raw.toLowerCase().trim();
+		if (!value) continue;
+		if (value.includes("focus")) {
+			skip.add("focus");
+		} else if (value.includes("blocked")) {
+			skip.add("blocked");
+		} else if (value.includes("ralph")) {
+			skip.add("ralph");
+		} else if (value.includes("task") || value.includes("rollover")) {
+			skip.add("tasks");
+			skip.add("rollover");
+		} else {
+			skip.add(value);
+		}
+	}
+	return skip;
+}
+
+function resolveSectionsAdded(skip: Set<string>): string[] {
+	return SECTION_KEYS.filter(({ key }) => !skip.has(key)).map(
+		({ label }) => label,
+	);
 }
 
 async function loadDailyNote(options: {
@@ -537,6 +633,7 @@ async function readOptionalFile(
 	adapter: VaultAdapter,
 	filePath: string,
 ): Promise<string | null> {
+	if (!filePath) return null;
 	if (!(await adapter.fileExists(filePath))) return null;
 	try {
 		return await adapter.readFile(filePath);
