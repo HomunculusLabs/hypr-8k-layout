@@ -44,7 +44,7 @@
 - [x] Refactor template command [012-refine-commands.md]
 - [x] Refactor stale-check command [012-refine-commands.md]
 - [x] Refactor link-check command [012-refine-commands.md]
-- [ ] Refactor lint command [012-refine-commands.md]
+- [x] Refactor lint command [012-refine-commands.md]
 - [ ] Refactor ralph-queue command [012-refine-commands.md]
 - [ ] Refactor project-health command [012-refine-commands.md]
 - [ ] Refactor weekly-rollup command [012-refine-commands.md]
