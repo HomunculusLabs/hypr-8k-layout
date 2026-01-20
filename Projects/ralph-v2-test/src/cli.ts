@@ -8,6 +8,7 @@ import { runRalphQueue } from "./commands/ralph-queue";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
 import { runTemplateCreate, runTemplateList } from "./commands/template";
+import { runWeeklyRollup } from "./commands/weekly-rollup";
 
 const program = new Command();
 
@@ -61,6 +62,27 @@ program
 			create: options.create,
 			dryRun: options.dryRun,
 			skip: options.skip,
+		});
+	});
+
+program
+	.command("weekly-rollup")
+	.description("Generate a weekly rollup from daily notes and todos")
+	.option("--week <week>", "Week to summarize (YYYY-WXX)")
+	.option("--start <date>", "Start date (YYYY-MM-DD)")
+	.option("--end <date>", "End date (YYYY-MM-DD)")
+	.option("--output <path>", "Output folder or file path")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runWeeklyRollup({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			week: options.week,
+			start: options.start,
+			end: options.end,
+			outputPath: options.output,
 		});
 	});
 
