@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { runDailyPopulate } from "./commands/daily-populate";
+import { runLinkCheck } from "./commands/link-check";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
 import { runTemplateCreate, runTemplateList } from "./commands/template";
@@ -108,6 +109,35 @@ program
 			blockedDays: options.blockedDays,
 			path: options.path,
 			exclude: options.exclude,
+		});
+	});
+
+program
+	.command("link-check")
+	.description("Check vault for broken wikilinks")
+	.option("--output <mode>", "Output mode (console, report)", "console")
+	.option(
+		"--exclude <pattern>",
+		"Exclude folders matching pattern",
+		(value, previous: string[] = []) => {
+			previous.push(value);
+			return previous;
+		},
+		[],
+	)
+	.option("--suggest", "Include close match suggestions")
+	.option("--create-stubs", "Create stub notes for missing links")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runLinkCheck({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			outputMode: options.output,
+			exclude: options.exclude,
+			suggest: options.suggest,
+			createStubs: options.createStubs,
 		});
 	});
 
