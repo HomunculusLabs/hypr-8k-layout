@@ -7,6 +7,8 @@
 		"dev": "bun run src/cli.ts",
 		"build": "bun build src/cli.ts --compile --outfile vault-tools",
 		"test": "bun test",
+		"test:unit": "bun test src/",
+		"test:integration": "bun test tests/integration.test.ts",
 		"lint": "bun run biome check ."
 	},
 	"dependencies": {

@@ -1,0 +1,35 @@
+vault:
+  path: .
+  todosFolder: Todos
+  projectsFolder: Projects
+  dailyFolder: Daily
+  templatesFolder: Templates
+
+output:
+  format: console
+  color: false
+  verbose: false
+
+schemas:
+  todo:
+    match:
+      folder: Todos
+    fields:
+      title:
+        type: string
+        required: true
+      status:
+        type: enum
+        values:
+          - active
+          - blocked
+          - completed
+        required: true
+      priority:
+        type: enum
+        values:
+          - high
+          - medium
+          - low
+      due:
+        type: date

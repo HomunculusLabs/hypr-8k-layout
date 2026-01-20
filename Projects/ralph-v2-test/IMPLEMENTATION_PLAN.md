@@ -113,11 +113,11 @@
 - [x] Write types documentation [043-docs-types.md]
 - [x] Review types documentation [058-review-docs-types.md]
 - [x] Write CLI entry point documentation [044-docs-cli-entry.md]
-- [ ] Review CLI entry documentation [059-review-docs-cli-entry.md]
+- [x] Review CLI entry documentation [059-review-docs-cli-entry.md]
 
 ## Priority 12 - Integration Testing
 
-- [ ] Create integration test suite with test vault fixture [061-integration-test-suite.md]
+- [x] Create integration test suite with test vault fixture [061-integration-test-suite.md]
 - [ ] Review integration test suite [062-review-integration-tests.md]
 
 ---
