@@ -47,7 +47,7 @@
 - [x] Refactor lint command [012-refine-commands.md]
 - [x] Refactor ralph-queue command [012-refine-commands.md]
 - [x] Refactor project-health command [012-refine-commands.md]
-- [ ] Refactor weekly-rollup command [012-refine-commands.md]
+- [x] Refactor weekly-rollup command [012-refine-commands.md]
 - [ ] Refactor stats command [012-refine-commands.md]
 - [ ] Final cleanup: remove dead code, consolidate types [013-final-cleanup.md]
 
