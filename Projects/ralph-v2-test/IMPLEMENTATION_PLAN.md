@@ -28,7 +28,7 @@
 ## Priority 3 - Intelligence & Automation
 
 - [x] Ralph Queue Builder [008-ralph-queue-builder.md]
-- [ ] Project Health Dashboard [007-project-health-dashboard.md]
+- [x] Project Health Dashboard [007-project-health-dashboard.md]
 - [ ] Weekly Rollup Generator [005-weekly-rollup-generator.md]
 
 ## Priority 4 - Nice to Have

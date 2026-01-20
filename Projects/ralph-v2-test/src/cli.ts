@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { runDailyPopulate } from "./commands/daily-populate";
 import { runLinkCheck } from "./commands/link-check";
 import { runFrontmatterLint } from "./commands/lint";
+import { runProjectHealth } from "./commands/project-health";
 import { runRalphQueue } from "./commands/ralph-queue";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
@@ -256,6 +257,29 @@ program
 			project: options.project,
 			includeLowPriority: options.includeLowPriority,
 			explain: options.explain,
+		});
+	});
+
+program
+	.command("project-health")
+	.description("Generate a project health dashboard")
+	.option(
+		"--output <mode>",
+		"Output mode (console, dashboard, json)",
+		"console",
+	)
+	.option("--status <status>", "Filter by status")
+	.option("--sort <field>", "Sort by health, last-touched, or priority")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runProjectHealth({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			output: options.output,
+			status: options.status,
+			sort: options.sort,
 		});
 	});
 
