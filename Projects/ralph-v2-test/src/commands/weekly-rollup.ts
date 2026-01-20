@@ -1,14 +1,11 @@
 import path from "node:path";
-import {
-	type CliOverrides,
-	type OutputFormat,
-	loadConfig,
-} from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
 	buildWeeklyRollup,
 	resolveWeeklyRollupRange,
 } from "../lib/weekly-rollup";
+import type { CliOverrides, OutputFormat } from "../types";
 
 export interface WeeklyRollupOptions {
 	configPath?: string;

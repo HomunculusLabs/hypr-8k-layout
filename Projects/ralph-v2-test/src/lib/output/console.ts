@@ -1,4 +1,4 @@
-import type { OutputItem, OutputOptions } from "./types";
+import type { OutputItem, OutputOptions } from "../../types";
 
 const COLORS = {
 	reset: "\u001b[0m",

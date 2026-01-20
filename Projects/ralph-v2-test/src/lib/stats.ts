@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { FrontmatterSchema, FrontmatterSchemas } from "./config";
+import type { FrontmatterSchema, FrontmatterSchemas } from "../types";
 import { findMarkdownFiles } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 import { parseWikilinks } from "./markdown/wikilinks";

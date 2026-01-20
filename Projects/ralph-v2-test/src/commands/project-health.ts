@@ -1,12 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { type CliOverrides, loadConfig } from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
 	type ProjectHealthResult,
 	buildProjectHealth,
 	formatDashboardMarkdown,
 } from "../lib/project-health";
+import type { CliOverrides } from "../types";
 
 export type ProjectHealthOutputMode = "console" | "dashboard" | "json";
 

@@ -1,10 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import {
-	type CliOverrides,
-	type OutputFormat,
-	loadConfig,
-} from "../lib/config";
+import { loadConfig } from "../lib/config";
 import {
 	LINK_CHECK_REPORT_FILENAME,
 	type LinkCheckOutputMode,
@@ -16,6 +12,7 @@ import {
 	checkBrokenLinks,
 } from "../lib/link-check";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
+import type { CliOverrides, OutputFormat } from "../types";
 
 export interface LinkCheckOptions {
 	configPath?: string;

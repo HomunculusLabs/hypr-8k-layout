@@ -1,11 +1,12 @@
 import { watch } from "node:fs";
 import path from "node:path";
-import { type CliOverrides, loadConfig } from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
 	type ShoppingSyncResult,
 	syncShoppingList,
 } from "../lib/shopping-sync";
+import type { CliOverrides } from "../types";
 
 export interface ShoppingSyncOptions {
 	configPath?: string;

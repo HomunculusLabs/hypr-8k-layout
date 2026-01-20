@@ -1,15 +1,12 @@
 import path from "node:path";
-import {
-	type CliOverrides,
-	type OutputFormat,
-	loadConfig,
-} from "../lib/config";
+import { loadConfig } from "../lib/config";
 import {
 	formatDate,
 	normalizeDateInput,
 	populateDailyNote,
 } from "../lib/daily-populate";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
+import type { CliOverrides, OutputFormat } from "../types";
 
 export interface DailyPopulateOptions {
 	configPath?: string;

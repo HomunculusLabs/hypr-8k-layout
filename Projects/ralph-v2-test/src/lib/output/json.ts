@@ -1,4 +1,4 @@
-import type { OutputItem } from "./types";
+import type { OutputItem } from "../../types";
 
 export function formatJson(items: OutputItem[]): string {
 	const summary = items.reduce(

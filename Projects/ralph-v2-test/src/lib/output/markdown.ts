@@ -1,4 +1,4 @@
-import type { OutputItem } from "./types";
+import type { OutputItem } from "../../types";
 
 export function formatMarkdown(items: OutputItem[], title?: string): string {
 	const summary = items.reduce(

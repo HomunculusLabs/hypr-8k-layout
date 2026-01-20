@@ -49,7 +49,7 @@
 - [x] Refactor project-health command [012-refine-commands.md]
 - [x] Refactor weekly-rollup command [012-refine-commands.md]
 - [x] Refactor stats command [012-refine-commands.md]
-- [ ] Final cleanup: remove dead code, consolidate types [013-final-cleanup.md]
+- [x] Final cleanup: remove dead code, consolidate types [013-final-cleanup.md]
 
 ---
 

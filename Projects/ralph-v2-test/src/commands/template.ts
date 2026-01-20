@@ -1,9 +1,5 @@
 import readline from "node:readline/promises";
-import {
-	type CliOverrides,
-	type OutputFormat,
-	loadConfig,
-} from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
 	type TemplateCreateResult,
@@ -11,6 +7,7 @@ import {
 	createFromTemplate,
 	listTemplates,
 } from "../lib/template";
+import type { CliOverrides, OutputFormat } from "../types";
 
 export { createFromTemplate, listTemplates } from "../lib/template";
 

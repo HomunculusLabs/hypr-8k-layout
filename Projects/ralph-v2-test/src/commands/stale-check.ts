@@ -1,12 +1,9 @@
 import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import {
-	type CliOverrides,
-	type OutputFormat,
-	loadConfig,
-} from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { findMarkdownFiles, readNote, writeNote } from "../lib/markdown/files";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
+import type { CliOverrides, OutputFormat } from "../types";
 
 export type StaleOutputMode = "report" | "inline" | "console";
 
@@ -72,6 +69,15 @@ interface StaleTodo {
 
 const STALE_TAG = "⚠️ STALE";
 const LAST_UPDATED_PATTERN = /last updated[^0-9]*(\d{4}-\d{2}-\d{2})/i;
+const REPORT_FILENAME = "Stale Todos Report.md";
+const DEFAULT_THRESHOLDS: StaleThresholds = {
+	high: 3,
+	medium: 7,
+	low: 14,
+	blocked: 14,
+};
+const SEVERITY_MULTIPLIER = 2;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function runStaleCheck(options: StaleCheckOptions): Promise<void> {
 	const config = await loadConfig(options.configPath, {
@@ -81,18 +87,12 @@ export async function runStaleCheck(options: StaleCheckOptions): Promise<void> {
 		output: options.output,
 	} satisfies CliOverrides);
 
-	const outputOptions: OutputOptions = {
-		format: config.output.format,
-		color: config.output.color,
-		verbose: config.output.verbose,
-		quiet: false,
-	};
-
+	const outputOptions = buildOutputOptions(config);
 	const outputMode = normalizeOutputMode(options.outputMode ?? "report");
 	const todosPath = options.path
 		? resolveTodosPath(config.vault.path, options.path)
 		: config.vault.todosFolder;
-	const reportPath = path.join(config.vault.path, "Stale Todos Report.md");
+	const reportPath = path.join(config.vault.path, REPORT_FILENAME);
 
 	try {
 		const result = await checkStaleTodos({
@@ -105,46 +105,13 @@ export async function runStaleCheck(options: StaleCheckOptions): Promise<void> {
 			noWrite: options.noWrite,
 		});
 
-		const items: OutputItem[] = [];
-		for (const warning of result.warnings) {
-			items.push({ type: "warning", message: warning });
-		}
-
-		const summary = [
-			`Active todos: ${result.totalActive}`,
-			`Stale: ${result.staleActive}`,
-			`Blocked stale: ${result.staleBlocked}`,
-		].join(", ");
-
-		items.push({
-			type: "success",
-			message:
-				outputMode === "inline"
-					? "Stale todos tagged"
-					: outputMode === "console"
-						? "Stale todo summary"
-						: "Stale todo report generated",
-			details: summary,
-		});
-
-		if (outputMode === "report") {
-			items.push({
-				type: "info",
-				message: `Report path: ${result.reportPath}`,
-			});
-		}
-
-		if (outputMode === "inline" && result.updatedTodos === 0) {
-			items.push({ type: "info", message: "No stale todos to tag" });
-		}
-
 		if (outputMode === "console") {
 			const consoleLines = buildConsoleLines(result);
 			console.log(consoleLines.join("\n"));
 			return;
 		}
 
-		output(items, outputOptions);
+		output(buildOutputItems(result, outputMode), outputOptions);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error";
 		output([{ type: "error", message }], {
@@ -186,15 +153,11 @@ export async function checkStaleTodos(
 		}
 
 		const fileStats = await stat(todoPath);
-		const created = resolveCreatedDate(note.frontmatter, fileStats);
-		const lastUpdated =
-			extractLastUpdated(note.content) ??
-			resolveFileDate(fileStats.mtime) ??
-			created;
+		const lastUpdated = resolveLastUpdated(note, fileStats);
+		const daysStale = daysBetween(now, lastUpdated);
 
 		if (!isBlocked) {
-			const days = daysBetween(now, lastUpdated);
-			totalAge += days;
+			totalAge += daysStale;
 			totalAgeCount += 1;
 		}
 
@@ -202,12 +165,12 @@ export async function checkStaleTodos(
 		const threshold = isBlocked
 			? paths.thresholds.blocked
 			: paths.thresholds[priority];
-		const daysStale = daysBetween(now, lastUpdated);
 		if (daysStale < threshold) {
 			continue;
 		}
 
-		const severity = daysStale >= threshold * 2 ? "critical" : "warning";
+		const severity =
+			daysStale >= threshold * SEVERITY_MULTIPLIER ? "critical" : "warning";
 
 		staleTodos.push({
 			path: todoPath,
@@ -270,6 +233,60 @@ export async function checkStaleTodos(
 	};
 }
 
+function buildOutputOptions(config: {
+	output: { format: string; color: boolean; verbose: boolean };
+}): OutputOptions {
+	return {
+		format: config.output.format,
+		color: config.output.color,
+		verbose: config.output.verbose,
+		quiet: false,
+	};
+}
+
+function buildOutputItems(
+	result: StaleCheckResult,
+	outputMode: StaleOutputMode,
+): OutputItem[] {
+	const items: OutputItem[] = [];
+	for (const warning of result.warnings) {
+		items.push({ type: "warning", message: warning });
+	}
+
+	items.push({
+		type: "success",
+		message: resolveOutputMessage(outputMode),
+		details: buildSummary(result),
+	});
+
+	if (outputMode === "report") {
+		items.push({
+			type: "info",
+			message: `Report path: ${result.reportPath}`,
+		});
+	}
+
+	if (outputMode === "inline" && result.updatedTodos === 0) {
+		items.push({ type: "info", message: "No stale todos to tag" });
+	}
+
+	return items;
+}
+
+function resolveOutputMessage(outputMode: StaleOutputMode): string {
+	if (outputMode === "inline") return "Stale todos tagged";
+	if (outputMode === "console") return "Stale todo summary";
+	return "Stale todo report generated";
+}
+
+function buildSummary(result: StaleCheckResult): string {
+	return [
+		`Active todos: ${result.totalActive}`,
+		`Stale: ${result.staleActive}`,
+		`Blocked stale: ${result.staleBlocked}`,
+	].join(", ");
+}
+
 function resolveTodosPath(vaultPath: string, overridePath?: string): string {
 	if (!overridePath) return vaultPath;
 	if (path.isAbsolute(overridePath)) return overridePath;
@@ -278,10 +295,14 @@ function resolveTodosPath(vaultPath: string, overridePath?: string): string {
 
 function normalizeThresholds(options: StaleCheckOptions): StaleThresholds {
 	return {
-		high: clampDays(resolveDays(options.highDays, 3)),
-		medium: clampDays(resolveDays(options.mediumDays, 7)),
-		low: clampDays(resolveDays(options.lowDays, 14)),
-		blocked: clampDays(resolveDays(options.blockedDays, 14)),
+		high: clampDays(resolveDays(options.highDays, DEFAULT_THRESHOLDS.high)),
+		medium: clampDays(
+			resolveDays(options.mediumDays, DEFAULT_THRESHOLDS.medium),
+		),
+		low: clampDays(resolveDays(options.lowDays, DEFAULT_THRESHOLDS.low)),
+		blocked: clampDays(
+			resolveDays(options.blockedDays, DEFAULT_THRESHOLDS.blocked),
+		),
 	};
 }
 
@@ -366,6 +387,16 @@ function resolveCreatedDate(
 		resolveFileDate(stats.birthtime) ??
 		resolveFileDate(stats.mtime) ??
 		new Date()
+	);
+}
+
+function resolveLastUpdated(
+	note: { frontmatter: Record<string, unknown>; content: string },
+	stats: { birthtime: Date; mtime: Date },
+): Date {
+	const created = resolveCreatedDate(note.frontmatter, stats);
+	return (
+		extractLastUpdated(note.content) ?? resolveFileDate(stats.mtime) ?? created
 	);
 }
 
@@ -527,6 +558,6 @@ function startOfDay(date: Date): Date {
 function daysBetween(left: Date, right: Date): number {
 	const leftStart = startOfDay(left).getTime();
 	const rightStart = startOfDay(right).getTime();
-	const diff = Math.floor((leftStart - rightStart) / (24 * 60 * 60 * 1000));
+	const diff = Math.floor((leftStart - rightStart) / DAY_MS);
 	return diff < 0 ? 0 : diff;
 }

@@ -4,7 +4,7 @@ import type {
 	FrontmatterSchema,
 	FrontmatterSchemaField,
 	FrontmatterSchemas,
-} from "./config";
+} from "../types";
 import { findMarkdownFiles, writeNote } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 

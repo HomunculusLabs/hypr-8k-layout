@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { type CliOverrides, loadConfig } from "../lib/config";
+import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
 	type RalphQueueResult,
@@ -8,6 +8,7 @@ import {
 	formatQueueConsole,
 	formatQueueMarkdown,
 } from "../lib/ralph-queue";
+import type { CliOverrides } from "../types";
 
 export type RalphQueueOutputMode = "console" | "queue" | "json";
 
