@@ -81,7 +81,7 @@
 
 ## Priority 10 - Command Documentation
 
-- [ ] Write stats command documentation [030-docs-stats.md]
+- [x] Write stats command documentation [030-docs-stats.md]
 - [ ] Review stats documentation [045-review-docs-stats.md]
 - [ ] Write project-health command documentation [031-docs-project-health.md]
 - [ ] Review project-health documentation [046-review-docs-project-health.md]
