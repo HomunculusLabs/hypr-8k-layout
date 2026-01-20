@@ -91,7 +91,7 @@
 - [x] Review daily-populate documentation [048-review-docs-daily-populate.md]
 - [x] Write weekly-rollup command documentation [034-docs-weekly-rollup.md]
 - [x] Review weekly-rollup documentation [049-review-docs-weekly-rollup.md]
-- [ ] Write ralph-queue command documentation [035-docs-ralph-queue.md]
+- [x] Write ralph-queue command documentation [035-docs-ralph-queue.md]
 - [ ] Review ralph-queue documentation [050-review-docs-ralph-queue.md]
 - [ ] Write template command documentation [036-docs-template.md]
 - [ ] Review template documentation [051-review-docs-template.md]
