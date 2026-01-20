@@ -111,8 +111,8 @@
 - [x] Write output formatters documentation [042-docs-output-formatters.md]
 - [x] Review output formatters documentation [057-review-docs-output-formatters.md]
 - [x] Write types documentation [043-docs-types.md]
-- [ ] Review types documentation [058-review-docs-types.md]
-- [ ] Write CLI entry point documentation [044-docs-cli-entry.md]
+- [x] Review types documentation [058-review-docs-types.md]
+- [x] Write CLI entry point documentation [044-docs-cli-entry.md]
 - [ ] Review CLI entry documentation [059-review-docs-cli-entry.md]
 
 ## Priority 12 - Integration Testing
