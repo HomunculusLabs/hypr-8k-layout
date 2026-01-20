@@ -1,5 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { MARKDOWN } from "./constants";
 import { setCheckboxState } from "./markdown/checkboxes";
 import { findMarkdownFiles, readNote, writeNote } from "./markdown/files";
 import { type Section, parseSections } from "./markdown/sections";
@@ -309,7 +310,7 @@ function renderShoppingList(
 		lines.push("");
 	}
 
-	lines.push("---");
+	lines.push(MARKDOWN.horizontalRule);
 	lines.push(`*Auto-synced: ${formatTimestamp(new Date())}*`);
 	lines.push("");
 	return lines.join("\n");

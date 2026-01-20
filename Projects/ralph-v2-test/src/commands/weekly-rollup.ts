@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -51,7 +52,7 @@ export const runWeeklyRollup = createCommandRunner(
 		endDate: range.endDate,
 	});
 
-	if (config.output.format === "json") {
+	if (config.output.format === OUTPUT_FORMAT.json) {
 		console.log(JSON.stringify(result, null, 2));
 		return;
 	}

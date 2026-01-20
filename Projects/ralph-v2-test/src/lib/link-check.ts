@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { FILENAMES, MARKDOWN } from "./constants";
 import { findMarkdownFiles } from "./markdown/files";
 
 export type LinkCheckOutputMode = "console" | "report";
@@ -45,11 +46,9 @@ interface FileIndexes {
 	names: string[];
 }
 
-const REPORT_FILENAME = "Broken Links.md";
-const FRONTMATTER_DELIMITER = "---";
-const CODE_FENCE_DELIMITER = "```";
-const LINK_PATTERN = /!?\[\[([^\]]+)\]\]/g;
-const HEADING_PATTERN = /^(#{1,6})\s+(.+)$/;
+const REPORT_FILENAME = FILENAMES.linkCheckReport;
+const LINK_PATTERN = MARKDOWN.wikilinkWithEmbed;
+const HEADING_PATTERN = MARKDOWN.heading;
 const SUGGESTION_RATIO = 0.4;
 const MIN_SUGGESTION_THRESHOLD = 2;
 const MAX_SUGGESTIONS = 3;
@@ -228,20 +227,21 @@ function forEachContentLine(
 ): void {
 	const lines = content.split("\n");
 	let inFence = false;
-	let skippingFrontmatter = lines[0]?.trim() === FRONTMATTER_DELIMITER;
+	let skippingFrontmatter =
+		lines[0]?.trim() === MARKDOWN.frontmatterDelimiter;
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const line = lines[index] ?? "";
 		const trimmed = line.trim();
 
 		if (skippingFrontmatter) {
-			if (index > 0 && trimmed === FRONTMATTER_DELIMITER) {
+			if (index > 0 && trimmed === MARKDOWN.frontmatterDelimiter) {
 				skippingFrontmatter = false;
 			}
 			continue;
 		}
 
-		if (trimmed.startsWith(CODE_FENCE_DELIMITER)) {
+		if (MARKDOWN.codeBlockFence.test(trimmed)) {
 			inFence = !inFence;
 			continue;
 		}

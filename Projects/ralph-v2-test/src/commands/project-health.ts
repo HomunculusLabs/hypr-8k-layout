@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { FILENAMES, OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -22,7 +23,7 @@ export interface ProjectHealthOptions {
 	sort?: string;
 }
 
-const DASHBOARD_FILENAME = "Projects Dashboard.md";
+const DASHBOARD_FILENAME = FILENAMES.projectDashboard;
 
 export const runProjectHealth = createCommandRunner(
 	async (
@@ -38,7 +39,7 @@ export const runProjectHealth = createCommandRunner(
 	const outputOptions = buildOutputOptions(config);
 	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(
-		options.output ?? (options.json ? "json" : "console"),
+		options.output ?? (options.json ? OUTPUT_FORMAT.json : OUTPUT_FORMAT.console),
 		config.output.format,
 	);
 
@@ -49,7 +50,7 @@ export const runProjectHealth = createCommandRunner(
 		sort: options.sort,
 	});
 
-	if (outputMode === "json") {
+	if (outputMode === OUTPUT_FORMAT.json) {
 		console.log(JSON.stringify(result, null, 2));
 		return;
 	}
@@ -60,7 +61,7 @@ export const runProjectHealth = createCommandRunner(
 		await writeFile(dashboardPath, markdown, "utf8");
 		output(buildDashboardOutputItems(result, dashboardPath), {
 			...outputOptions,
-			format: "console",
+			format: OUTPUT_FORMAT.console,
 		});
 		return;
 	}
@@ -84,12 +85,14 @@ function buildOutputOptions(config: {
 
 function normalizeOutputMode(
 	value: ProjectHealthOutputMode,
-	defaultFormat: "console" | "json" | "markdown",
+	defaultFormat: OutputOptions["format"],
 ): ProjectHealthOutputMode {
-	if (value === "console" || value === "dashboard" || value === "json") {
+	if (value === OUTPUT_FORMAT.console || value === "dashboard" || value === OUTPUT_FORMAT.json) {
 		return value;
 	}
-	return defaultFormat === "json" ? "json" : "console";
+	return defaultFormat === OUTPUT_FORMAT.json
+		? OUTPUT_FORMAT.json
+		: OUTPUT_FORMAT.console;
 }
 
 function buildDashboardOutputItems(

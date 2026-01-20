@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { MARKDOWN } from "./constants";
 import { parseCheckboxes } from "./markdown/checkboxes";
 import { findMarkdownFiles, readNote } from "./markdown/files";
 import { parseSections } from "./markdown/sections";
@@ -725,7 +726,7 @@ function renderWeeklyRollup(options: {
 	);
 	lines.push("");
 
-	lines.push("---");
+	lines.push(MARKDOWN.horizontalRule);
 	lines.push(`*Generated: ${formatTimestamp(options.now)}*`);
 	lines.push("");
 

@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { coerceBool, coerceDate } from "./coerce";
+import { MARKDOWN } from "./constants";
 import { collectFiles, walkDirectory } from "./fs/walk";
 import { readNote } from "./markdown/files";
 import { parseSections } from "./markdown/sections";
@@ -250,7 +251,7 @@ export function formatDashboardMarkdown(result: ProjectHealthResult): string {
 		...formatRecommendationList(result.recommendations.considerArchiving),
 	);
 	lines.push("");
-	lines.push("---");
+	lines.push(MARKDOWN.horizontalRule);
 	lines.push("*Health scores: healthy >70 | warning 40-70 | critical <40*");
 
 	return lines.join("\n");

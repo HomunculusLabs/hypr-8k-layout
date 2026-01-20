@@ -1,6 +1,7 @@
 import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { FILENAMES, OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { findMarkdownFiles, readNote, writeNote } from "../lib/markdown/files";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
@@ -70,7 +71,7 @@ interface StaleTodo {
 
 const STALE_TAG = "⚠️ STALE";
 const LAST_UPDATED_PATTERN = /last updated[^0-9]*(\d{4}-\d{2}-\d{2})/i;
-const REPORT_FILENAME = "Stale Todos Report.md";
+const REPORT_FILENAME = FILENAMES.staleTodosReport;
 const DEFAULT_THRESHOLDS: StaleThresholds = {
 	high: 3,
 	medium: 7,
@@ -107,7 +108,7 @@ export const runStaleCheck = createCommandRunner(
 		noWrite: options.noWrite,
 	});
 
-	if (outputMode === "console") {
+	if (outputMode === OUTPUT_FORMAT.console) {
 		const consoleLines = buildConsoleLines(result);
 		console.log(consoleLines.join("\n"));
 		return;
@@ -270,7 +271,7 @@ function buildOutputItems(
 
 function resolveOutputMessage(outputMode: StaleOutputMode): string {
 	if (outputMode === "inline") return "Stale todos tagged";
-	if (outputMode === "console") return "Stale todo summary";
+	if (outputMode === OUTPUT_FORMAT.console) return "Stale todo summary";
 	return "Stale todo report generated";
 }
 
@@ -317,7 +318,7 @@ function normalizeExcludePatterns(patterns?: string[]): string[] {
 }
 
 function normalizeOutputMode(value: string): StaleOutputMode {
-	if (value === "inline" || value === "console" || value === "report") {
+	if (value === "inline" || value === OUTPUT_FORMAT.console || value === "report") {
 		return value;
 	}
 	throw new Error(`Invalid output mode: ${value}`);

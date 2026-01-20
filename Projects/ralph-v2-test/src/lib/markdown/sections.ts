@@ -1,3 +1,5 @@
+import { MARKDOWN } from "../constants";
+
 export interface Section {
 	heading: string;
 	level: number;
@@ -20,7 +22,7 @@ export function parseSections(content: string): Section[] {
 	for (let index = 0; index < lines.length; index += 1) {
 		const line = lines[index];
 		const trimmed = line.trim();
-		if (trimmed.startsWith("```")) {
+		if (MARKDOWN.codeBlockFence.test(trimmed)) {
 			inFence = !inFence;
 			continue;
 		}
@@ -29,7 +31,7 @@ export function parseSections(content: string): Section[] {
 			continue;
 		}
 
-		const match = /^(#{1,6})\s+(.*)$/.exec(line);
+		const match = MARKDOWN.heading.exec(line);
 		if (!match) {
 			continue;
 		}

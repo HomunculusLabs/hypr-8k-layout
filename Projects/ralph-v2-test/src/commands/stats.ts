@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { FILENAMES, OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -23,7 +24,7 @@ export interface VaultStatsOptions {
 	compare?: string;
 }
 
-const REPORT_FILENAME = "Vault Stats.md";
+const REPORT_FILENAME = FILENAMES.vaultStatsReport;
 
 export const runStats = createCommandRunner(
 	async (
@@ -56,14 +57,14 @@ export const runStats = createCommandRunner(
 		? await compareStats(result, comparePath)
 		: null;
 
-	if (config.output.format === "json") {
+	if (config.output.format === OUTPUT_FORMAT.json) {
 		const payload = comparison ? { ...result, comparison } : { ...result };
 		console.log(JSON.stringify(payload, null, 2));
 		return;
 	}
 
 	const markdown = renderMarkdownReport(result, comparison, sections);
-	if (config.output.format === "markdown") {
+	if (config.output.format === OUTPUT_FORMAT.markdown) {
 		await writeFile(reportPath, markdown, "utf8");
 		output(buildReportOutputItems(result, reportPath), outputOptions);
 		return;

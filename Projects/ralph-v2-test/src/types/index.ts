@@ -1,4 +1,6 @@
-export type OutputFormat = "console" | "json" | "markdown";
+import type { OutputFormat } from "../lib/constants";
+
+export type { OutputFormat };
 
 export type FrontmatterFieldType = "string" | "date" | "enum" | "array";
 

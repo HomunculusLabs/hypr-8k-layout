@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { FILENAMES, OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import {
 	type FrontmatterLintResult,
@@ -48,13 +49,13 @@ export const runFrontmatterLint = createCommandRunner(
 	setOutputOptions(outputOptions);
 
 	const outputMode = normalizeOutputMode(
-		options.outputMode ?? (options.json ? "json" : "report"),
+		options.outputMode ?? (options.json ? OUTPUT_FORMAT.json : "report"),
 	);
 	const rootPath = resolveRootPath(
 		config.vault.path,
 		options.path ?? config.vault.path,
 	);
-	const reportPath = path.join(config.vault.path, "Frontmatter Lint Report.md");
+	const reportPath = path.join(config.vault.path, FILENAMES.lintReport);
 
 	const result: FrontmatterLintResult = await lintFrontmatter({
 		vaultPath: config.vault.path,
@@ -66,7 +67,7 @@ export const runFrontmatterLint = createCommandRunner(
 		schemas: config.schemas ?? {},
 	});
 
-	if (outputMode === "json") {
+	if (outputMode === OUTPUT_FORMAT.json) {
 		console.log(JSON.stringify(result, null, 2));
 		if (result.totalErrors > 0) {
 			process.exitCode = 1;
@@ -74,7 +75,7 @@ export const runFrontmatterLint = createCommandRunner(
 		return;
 	}
 
-	if (outputMode === "console") {
+	if (outputMode === OUTPUT_FORMAT.console) {
 		console.log(buildConsoleLines(result).join("\n"));
 		if (result.totalErrors > 0) {
 			process.exitCode = 1;

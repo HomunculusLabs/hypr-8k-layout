@@ -1,3 +1,5 @@
+import { MARKDOWN } from "../constants";
+
 export interface WikiLink {
 	target: string;
 	display?: string;
@@ -52,11 +54,11 @@ export function parseWikilinks(content: string): WikiLink[] {
 	const lines = content.split("\n");
 	let offset = 0;
 	let inFence = false;
-	const wikilinkRegex = /\[\[([^\]]+)\]\]/g;
+	const wikilinkRegex = new RegExp(MARKDOWN.wikilink);
 
 	for (const line of lines) {
 		const trimmed = line.trim();
-		if (trimmed.startsWith("```")) {
+		if (MARKDOWN.codeBlockFence.test(trimmed)) {
 			inFence = !inFence;
 			offset += line.length + 1;
 			continue;

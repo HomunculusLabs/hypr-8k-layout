@@ -1,4 +1,5 @@
 import YAML from "yaml";
+import { MARKDOWN } from "../constants";
 
 export interface ParsedNote {
 	frontmatter: Record<string, unknown>;
@@ -8,11 +9,11 @@ export interface ParsedNote {
 export function parseNote(content: string): ParsedNote {
 	const lines = content.split("\n");
 
-	if (lines[0] !== "---") {
+	if (lines[0] !== MARKDOWN.frontmatterDelimiter) {
 		return { frontmatter: {}, content };
 	}
 
-	const endIndex = lines.indexOf("---", 1);
+	const endIndex = lines.indexOf(MARKDOWN.frontmatterDelimiter, 1);
 	if (endIndex === -1) {
 		return { frontmatter: {}, content };
 	}
@@ -44,6 +45,10 @@ export function serializeNote(note: ParsedNote): string {
 	}
 
 	const yaml = YAML.stringify(frontmatter).trimEnd();
-	const header = yaml.length > 0 ? `---\n${yaml}\n---` : "---\n---";
+	const delimiter = MARKDOWN.frontmatterDelimiter;
+	const header =
+		yaml.length > 0
+			? `${delimiter}\n${yaml}\n${delimiter}`
+			: `${delimiter}\n${delimiter}`;
 	return content.length > 0 ? `${header}\n${content}` : `${header}\n`;
 }

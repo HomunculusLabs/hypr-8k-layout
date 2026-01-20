@@ -4,6 +4,13 @@ import type { FrontmatterSchema, FrontmatterSchemas } from "../types";
 import { findMarkdownFiles } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 import { parseWikilinks } from "./markdown/wikilinks";
+import {
+	MARKDOWN,
+	TOP_BACKLINKS_COUNT,
+	TOP_COOCURRENCE_COUNT,
+	TOP_FIELDS_COUNT,
+	TOP_TAGS_COUNT,
+} from "./constants";
 import { getCachedRegex } from "./regex-cache";
 import { vaultStatsSchema } from "./schemas";
 
@@ -93,10 +100,10 @@ const DEFAULT_SECTIONS: StatsSection[] = [
 	"activity",
 	"frontmatter",
 ];
-const TOP_BACKLINKS = 10;
-const TOP_TAGS = 10;
-const TOP_FIELDS = 10;
-const TOP_COOCURRENCE = 10;
+const TOP_BACKLINKS = TOP_BACKLINKS_COUNT;
+const TOP_TAGS = TOP_TAGS_COUNT;
+const TOP_FIELDS = TOP_FIELDS_COUNT;
+const TOP_COOCURRENCE = TOP_COOCURRENCE_COUNT;
 
 export function normalizeSections(input?: string | string[]): StatsSection[] {
 	if (!input) {
@@ -480,7 +487,7 @@ export function renderMarkdownReport(
 	}
 
 	if (result.warnings.length > 0) {
-		lines.push("---");
+		lines.push(MARKDOWN.horizontalRule);
 		lines.push(`Warnings: ${result.warnings.length}`);
 	}
 
@@ -639,19 +646,20 @@ function extractInlineTags(content: string): string[] {
 	const tags: string[] = [];
 	const lines = content.split("\n");
 	let inFence = false;
+	const tagRegex = new RegExp(MARKDOWN.tag);
 	for (const line of lines) {
 		const trimmed = line.trim();
-		if (trimmed.startsWith("```")) {
+		if (MARKDOWN.codeBlockFence.test(trimmed)) {
 			inFence = !inFence;
 			continue;
 		}
 		if (inFence) continue;
-		const regex = /(^|\s)#([A-Za-z0-9/_-]+)/g;
-		let match = regex.exec(line);
+		tagRegex.lastIndex = 0;
+		let match = tagRegex.exec(line);
 		while (match) {
 			const tag = normalizeTag(match[2]);
 			if (tag) tags.push(tag);
-			match = regex.exec(line);
+			match = tagRegex.exec(line);
 		}
 	}
 	return tags;

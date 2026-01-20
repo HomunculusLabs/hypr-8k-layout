@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { parse } from "yaml";
 
+import { OUTPUT_FORMAT, OUTPUT_FORMATS } from "./constants";
 import type {
 	CliOverrides,
 	FrontmatterFieldType,
@@ -22,7 +23,7 @@ const DEFAULT_CONFIG: VaultToolsConfig = {
 		templatesFolder: "5 - Templates",
 	},
 	output: {
-		format: "console",
+		format: OUTPUT_FORMAT.console,
 		color: true,
 		verbose: false,
 	},
@@ -222,13 +223,13 @@ function applyCliOverrides(
 		next.output.format = cliOverrides.output;
 	}
 	if (cliOverrides.json) {
-		next.output.format = "json";
+		next.output.format = OUTPUT_FORMAT.json;
 	}
 	return next;
 }
 
 function isOutputFormat(value: unknown): value is OutputFormat {
-	return value === "console" || value === "json" || value === "markdown";
+	return typeof value === "string" && OUTPUT_FORMATS.includes(value);
 }
 
 function normalizeSchemas(raw: unknown): FrontmatterSchemas {

@@ -1,5 +1,6 @@
 import readline from "node:readline/promises";
 import { createCommandRunner } from "../lib/command-runner";
+import { OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -53,12 +54,12 @@ export const runTemplateList = createCommandRunner(
 	setOutputOptions(outputOptions);
 
 	const result = await listTemplates(config.vault.templatesFolder);
-	if (outputOptions.format === "json") {
+	if (outputOptions.format === OUTPUT_FORMAT.json) {
 		console.log(JSON.stringify(result, null, 2));
 		return;
 	}
 
-	if (outputOptions.format === "markdown") {
+	if (outputOptions.format === OUTPUT_FORMAT.markdown) {
 		console.log(formatTemplateListMarkdown(result.templates));
 		return;
 	}
@@ -116,7 +117,7 @@ export const runTemplateCreate = createCommandRunner(
 		if (result.canceled) {
 			output([{ type: "info", message: "Template creation cancelled" }], {
 				...outputOptions,
-				format: "console",
+				format: OUTPUT_FORMAT.console,
 			});
 			return;
 		}

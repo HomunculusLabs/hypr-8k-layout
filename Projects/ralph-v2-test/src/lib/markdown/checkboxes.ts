@@ -1,3 +1,5 @@
+import { MARKDOWN } from "../constants";
+
 export interface Checkbox {
 	checked: boolean;
 	text: string;
@@ -6,7 +8,7 @@ export interface Checkbox {
 	indent: number;
 }
 
-const checkboxPattern = /^(\s*)([-*])\s+\[( |x|X)\]\s*(.*)$/;
+const checkboxPattern = MARKDOWN.checkbox;
 
 export function parseCheckboxes(content: string): Checkbox[] {
 	const lines = content.split("\n");

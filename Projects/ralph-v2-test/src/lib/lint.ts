@@ -5,6 +5,7 @@ import type {
 	FrontmatterSchemaField,
 	FrontmatterSchemas,
 } from "../types";
+import { OUTPUT_FORMAT } from "./constants";
 import { findMarkdownFiles, writeNote } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 import { getCachedRegex } from "./regex-cache";
@@ -622,7 +623,11 @@ function groupIssuesByFile(
 }
 
 export function normalizeOutputMode(value: string): LintOutputMode {
-	if (value === "json" || value === "console" || value === "report") {
+	if (
+		value === OUTPUT_FORMAT.json ||
+		value === OUTPUT_FORMAT.console ||
+		value === "report"
+	) {
 		return value;
 	}
 	return "report";

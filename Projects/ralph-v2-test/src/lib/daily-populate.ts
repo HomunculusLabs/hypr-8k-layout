@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { MARKDOWN } from "./constants";
 import { parseCheckboxes } from "./markdown/checkboxes";
 import { findMarkdownFiles, readNote, writeNote } from "./markdown/files";
 import { getSection, parseSections } from "./markdown/sections";
@@ -478,10 +479,10 @@ function applyTemplate(template: string, date: string): string {
 
 function buildDefaultTemplate(date: string): string {
 	return [
-		"---",
+		MARKDOWN.frontmatterDelimiter,
 		`created: ${formatTimestamp(new Date())}`,
 		"tags: [daily-note]",
-		"---",
+		MARKDOWN.frontmatterDelimiter,
 		"",
 		`# ${date}`,
 		"",

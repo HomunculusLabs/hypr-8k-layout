@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import {
 	LINK_CHECK_REPORT_FILENAME,
@@ -27,7 +28,7 @@ export interface LinkCheckOptions {
 	createStubs?: boolean;
 }
 
-const DEFAULT_OUTPUT_MODE: LinkCheckOutputMode = "console";
+const DEFAULT_OUTPUT_MODE: LinkCheckOutputMode = OUTPUT_FORMAT.console;
 
 export const runLinkCheck = createCommandRunner(
 	async (options: LinkCheckOptions, { setOutputOptions }): Promise<void> => {
@@ -54,7 +55,7 @@ export const runLinkCheck = createCommandRunner(
 		createStubs: Boolean(options.createStubs),
 	} satisfies LinkCheckPaths);
 
-	if (outputMode === "console") {
+	if (outputMode === OUTPUT_FORMAT.console) {
 		console.log(buildConsoleLines(result).join("\n"));
 		return;
 	}
@@ -80,7 +81,7 @@ function buildOutputOptions(config: {
 }
 
 function normalizeOutputMode(value: string): LinkCheckOutputMode {
-	return value === "report" ? "report" : "console";
+	return value === "report" ? "report" : OUTPUT_FORMAT.console;
 }
 
 function normalizeExcludePatterns(patterns?: string[]): string[] {

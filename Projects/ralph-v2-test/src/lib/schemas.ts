@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OUTPUT_FORMATS } from "./constants";
 
 const countsByFolderSchema = z.object({
 	folder: z.string(),
@@ -72,11 +73,7 @@ export const vaultStatsSchema = z.object({
 	warnings: z.array(z.string()),
 });
 
-const outputFormatSchema = z.union([
-	z.literal("console"),
-	z.literal("json"),
-	z.literal("markdown"),
-]);
+const outputFormatSchema = z.enum(OUTPUT_FORMATS);
 
 const frontmatterFieldTypeSchema = z.union([
 	z.literal("string"),

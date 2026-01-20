@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createCommandRunner } from "../lib/command-runner";
+import { FILENAMES, OUTPUT_FORMAT } from "../lib/constants";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -26,7 +27,7 @@ export interface RalphQueueOptions {
 	explain?: boolean;
 }
 
-const QUEUE_FILENAME = "Ralph Queue.md";
+const QUEUE_FILENAME = FILENAMES.ralphQueue;
 const DEFAULT_MAX_TASKS = 5;
 
 export const runRalphQueue = createCommandRunner(
@@ -40,7 +41,7 @@ export const runRalphQueue = createCommandRunner(
 	const outputOptions = buildOutputOptions(config);
 	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(
-		options.output ?? (options.json ? "json" : "console"),
+		options.output ?? (options.json ? OUTPUT_FORMAT.json : OUTPUT_FORMAT.console),
 		config.output.format,
 	);
 	const maxTasks = normalizeMaxTasks(options.maxTasks);
@@ -56,7 +57,7 @@ export const runRalphQueue = createCommandRunner(
 		includeLowPriority: options.includeLowPriority ?? false,
 	});
 
-	if (outputMode === "json") {
+	if (outputMode === OUTPUT_FORMAT.json) {
 		console.log(JSON.stringify(result, null, 2));
 		return;
 	}
@@ -71,7 +72,7 @@ export const runRalphQueue = createCommandRunner(
 		await writeFile(queuePath, queueText, "utf8");
 		output(buildQueueOutputItems(result, queuePath), {
 			...outputOptions,
-			format: "console",
+			format: OUTPUT_FORMAT.console,
 		});
 		return;
 	}
@@ -98,12 +99,14 @@ function buildOutputOptions(config: {
 
 function normalizeOutputMode(
 	value: RalphQueueOutputMode,
-	defaultFormat: "console" | "json" | "markdown",
+	defaultFormat: OutputOptions["format"],
 ): RalphQueueOutputMode {
-	if (value === "queue" || value === "json" || value === "console") {
+	if (value === "queue" || value === OUTPUT_FORMAT.json || value === OUTPUT_FORMAT.console) {
 		return value;
 	}
-	return defaultFormat === "json" ? "json" : "console";
+	return defaultFormat === OUTPUT_FORMAT.json
+		? OUTPUT_FORMAT.json
+		: OUTPUT_FORMAT.console;
 }
 
 function normalizeMaxTasks(maxTasks?: number): number {

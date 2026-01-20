@@ -1,4 +1,5 @@
 import type { OutputOptions } from "../types";
+import { OUTPUT_FORMAT } from "./constants";
 import { reportError } from "./output";
 
 type CommandFn<T> = (options: T, context: CommandContext) => Promise<void>;
@@ -8,7 +9,7 @@ interface CommandContext {
 }
 
 const DEFAULT_OUTPUT_OPTIONS: OutputOptions = {
-	format: "console",
+	format: OUTPUT_FORMAT.console,
 	color: true,
 	verbose: false,
 	quiet: false,
