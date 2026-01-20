@@ -11,7 +11,7 @@
 - [x] Project scaffold with Bun + CLI framework [000-cli-scaffold.md]
 - [x] Config file parser [000-config-parser.md]
 - [x] Markdown/frontmatter utilities [000-markdown-utils.md]
-- [ ] Output formatters [000-output-formatters.md]
+- [x] Output formatters [000-output-formatters.md]
 
 ## Priority 1 - Core Utilities (Immediately Useful)
 
