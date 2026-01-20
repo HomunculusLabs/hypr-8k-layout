@@ -21,6 +21,11 @@
 `formatMarkdown` returns a string. Callers are responsible for writing it to disk
 (e.g., `await Bun.write(path, output)`), or printing it to stdout.
 
+## When to Use
+
+- Generating a report to store in the vault or share in notes.
+- Useful for weekly summaries, audits, and long-running command results.
+
 ## Examples
 
 ```ts

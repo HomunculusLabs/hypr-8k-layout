@@ -32,6 +32,11 @@ The JSON payload has this shape:
 
 The output is always pretty-printed with a two-space indent.
 
+## When to Use
+
+- Machine-readable output for scripts, pipes, or integrations.
+- Best when you want a stable schema with counts and success state.
+
 ## Examples
 
 ```ts

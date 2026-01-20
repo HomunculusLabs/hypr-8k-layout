@@ -23,6 +23,11 @@
 Use `createProgress` in batch operations (directory walks, note processing) to
 emit periodic progress without needing a full progress bar.
 
+## When to Use
+
+- Long-running loops where users need feedback but a full TUI is overkill.
+- Batch processing of files or notes where counts are known or can be tracked.
+
 ## Examples
 
 ```ts

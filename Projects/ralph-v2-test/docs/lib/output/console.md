@@ -18,6 +18,12 @@
 - When `options.quiet` is true, only `error` items are emitted.
 - When `options.color` is true, labels are colored with ANSI escape codes.
 
+## When to Use
+
+- Default format for human-readable CLI output.
+- Best for interactive runs where color, context lines, and verbose details help.
+- Use `quiet` for cron jobs or scripts where only errors should surface.
+
 ## Color Handling
 
 - `info` -> blue
