@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type VaultToolsPlugin from './main';
 
 export interface VaultToolsSettings {
@@ -78,5 +78,43 @@ export class VaultToolsSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName('Validate paths')
+      .setDesc('Check that the configured folders exist in the vault.')
+      .addButton((btn) =>
+        btn.setButtonText('Validate').onClick(async () => {
+          const errors = await this.validateSettings();
+          if (errors.length === 0) {
+            new Notice('All paths valid!');
+          } else {
+            new Notice(`Issues found:\n${errors.join('\n')}`);
+          }
+        })
+      );
+  }
+
+  private async validateSettings(): Promise<string[]> {
+    const errors: string[] = [];
+    const folders = [
+      { name: 'Todos', path: this.plugin.settings.todosFolder },
+      { name: 'Projects', path: this.plugin.settings.projectsFolder },
+      { name: 'Daily', path: this.plugin.settings.dailyFolder },
+      { name: 'Templates', path: this.plugin.settings.templatesFolder },
+    ];
+
+    for (const folder of folders) {
+      const trimmed = folder.path.trim();
+      if (!trimmed) {
+        errors.push(`${folder.name} folder not set.`);
+        continue;
+      }
+      const exists = await this.plugin.fileExists(trimmed);
+      if (!exists) {
+        errors.push(`${folder.name} folder not found: ${trimmed}`);
+      }
+    }
+
+    return errors;
   }
 }

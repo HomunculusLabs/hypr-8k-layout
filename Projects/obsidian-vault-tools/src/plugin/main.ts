@@ -48,6 +48,15 @@ export default class VaultToolsPlugin extends Plugin {
     this.addSettingTab(new VaultToolsSettingTab(this.app, this));
 
     this.addCommand({
+      id: 'toggle-sidebar',
+      name: 'Toggle Vault Tools sidebar',
+      hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'v' }],
+      callback: () => {
+        void this.toggleSidebar();
+      },
+    });
+
+    this.addCommand({
       id: 'show-stats',
       name: 'Show vault statistics',
       callback: () => {
@@ -86,6 +95,14 @@ export default class VaultToolsPlugin extends Plugin {
         void this.runTemplateCreate();
       },
     });
+
+    this.addCommand({
+      id: 'refresh-stats',
+      name: 'Refresh vault statistics',
+      callback: () => {
+        void this.refreshStats();
+      },
+    });
   }
 
   onunload(): void {
@@ -103,6 +120,15 @@ export default class VaultToolsPlugin extends Plugin {
       await leaf.setViewState({ type: VIEW_TYPE_VAULT_TOOLS, active: true });
     }
     workspace.revealLeaf(leaf);
+  }
+
+  async toggleSidebar(): Promise<void> {
+    const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_VAULT_TOOLS)[0];
+    if (leaf) {
+      leaf.detach();
+      return;
+    }
+    await this.activateView();
   }
 
   async loadSettings(): Promise<void> {
@@ -138,36 +164,29 @@ export default class VaultToolsPlugin extends Plugin {
       return;
     }
 
-    view.showOutput('Loading vault stats...');
-    try {
-      const stats = await this.getQuickStats();
-      view.showOutput(
-        [
-          'Vault Stats',
-          `Notes: ${stats.noteCount}`,
-          `Words: ${stats.wordCount.toLocaleString()}`,
-          `Links: ${stats.linkCount}`,
-          `Orphans: ${stats.orphanCount}`,
-        ].join('\n'),
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to load stats.';
-      view.showOutput(`Error: ${message}`);
-    }
+    const stats = await view.runWithLoading(() => this.getQuickStats(), 'stats');
+    if (!stats) return;
+    view.showOutput(
+      [
+        'Vault Stats',
+        `Notes: ${stats.noteCount}`,
+        `Words: ${stats.wordCount.toLocaleString()}`,
+        `Links: ${stats.linkCount}`,
+        `Orphans: ${stats.orphanCount}`,
+      ].join('\n'),
+    );
   }
 
-  runLinkCheck(): void {
+  async runLinkCheck(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Link Check.');
       return;
     }
 
-    view.showOutput('Running link check...');
-    void (async () => {
-      try {
-        const result = await checkBrokenLinks({
+    const result = await view.runWithLoading(
+      () =>
+        checkBrokenLinks({
           adapter: this.adapter,
           vaultPath: '',
           reportPath: '',
@@ -175,28 +194,23 @@ export default class VaultToolsPlugin extends Plugin {
           excludePatterns: [],
           suggest: true,
           createStubs: false,
-        });
-        view.showLinkCheckResult(result);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to run link check.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+        }),
+      'link check',
+    );
+    if (result) view.showLinkCheckResult(result);
   }
 
-  runLint(): void {
+  async runLint(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Lint.');
       return;
     }
 
-    view.showOutput('Running lint...');
-    void (async () => {
-      try {
+    const result = await view.runWithLoading(
+      async () => {
         this.schemas = await this.loadSchemasFromConfig();
-        const result = await lintFrontmatter({
+        return lintFrontmatter({
           adapter: this.adapter,
           vaultPath: '',
           rootPath: '',
@@ -206,59 +220,42 @@ export default class VaultToolsPlugin extends Plugin {
           dryRun: true,
           schemas: this.schemas,
         });
-        view.showLintResult(result);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to run lint.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+      },
+      'lint',
+    );
+    if (result) view.showLintResult(result);
   }
 
-  runStaleCheck(): void {
+  async runStaleCheck(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Stale Todos.');
       return;
     }
 
-    view.showOutput('Running stale check...');
-    void (async () => {
-      try {
-        const result = await checkStaleTodos(
-          this.adapter,
-          this.settings.todosFolder
-        );
-        view.showStaleCheckResult(result);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to run stale check.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+    const result = await view.runWithLoading(
+      () => checkStaleTodos(this.adapter, this.settings.todosFolder),
+      'stale check',
+    );
+    if (result) view.showStaleCheckResult(result);
   }
 
-  runProjectHealth(): void {
+  async runProjectHealth(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Project Health.');
       return;
     }
 
-    view.showOutput('Loading project health...');
-    void (async () => {
-      try {
-        const result = await buildProjectHealth(this.adapter, {
+    const result = await view.runWithLoading(
+      () =>
+        buildProjectHealth(this.adapter, {
           projectsFolder: this.settings.projectsFolder,
           todosFolder: this.settings.todosFolder,
-        });
-        view.showProjectHealth(result);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to run project health.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+        }),
+      'project health',
+    );
+    if (result) view.showProjectHealth(result);
   }
 
   async runDailyPopulate(): Promise<void> {
@@ -298,55 +295,45 @@ export default class VaultToolsPlugin extends Plugin {
     }
   }
 
-  runRalphQueue(): void {
+  async runRalphQueue(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Ralph Queue.');
       return;
     }
 
-    view.showOutput('Building Ralph queue...');
-    void (async () => {
-      try {
-        const result = await buildRalphQueue({
+    const result = await view.runWithLoading(
+      () =>
+        buildRalphQueue({
           adapter: this.adapter,
           vaultPath: '',
           todosPath: this.settings.todosFolder,
           projectsPath: this.settings.projectsFolder,
           maxTasks: DEFAULT_RALPH_MAX_TASKS,
           includeLowPriority: false,
-        });
-        view.showRalphQueue(result);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to build Ralph queue.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+        }),
+      'ralph queue',
+    );
+    if (result) view.showRalphQueue(result);
   }
 
-  runShoppingSync(): void {
+  async runShoppingSync(): Promise<void> {
     const view = this.getSidebarView();
     if (!view) {
       new Notice('Vault Tools: open the sidebar to run Shopping Sync.');
       return;
     }
 
-    view.showOutput('Syncing shopping list...');
-    void (async () => {
-      try {
-        const result = await syncShoppingList({
+    const result = await view.runWithLoading(
+      () =>
+        syncShoppingList({
           adapter: this.adapter,
           todosPath: this.settings.todosFolder,
           shoppingListPath: SHOPPING_LIST_PATH,
-        });
-        view.showShoppingSyncResult(result, SHOPPING_LIST_PATH);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unable to sync shopping list.';
-        view.showOutput(`Error: ${message}`);
-      }
-    })();
+        }),
+      'shopping sync',
+    );
+    if (result) view.showShoppingSyncResult(result, SHOPPING_LIST_PATH);
   }
 
   async runTemplateCreate(): Promise<void> {
@@ -415,6 +402,15 @@ export default class VaultToolsPlugin extends Plugin {
     return view instanceof VaultToolsSidebarView ? view : null;
   }
 
+  private async refreshStats(): Promise<void> {
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to refresh stats.');
+      return;
+    }
+    await view.refreshStats();
+  }
+
   async openNote(path: string, line?: number): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) {
@@ -427,6 +423,10 @@ export default class VaultToolsPlugin extends Plugin {
       state: line ? { line } : undefined,
       eState: line ? { line } : undefined,
     });
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    return this.adapter.fileExists(path);
   }
 
   private async loadSchemasFromConfig(): Promise<FrontmatterSchemas> {

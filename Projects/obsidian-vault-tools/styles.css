@@ -1,5 +1,6 @@
 .vault-tools-container {
   padding: 10px;
+  min-width: 200px;
 }
 
 .vault-tools-section {
@@ -51,6 +52,10 @@
   cursor: pointer;
 }
 
+.vault-tools-action-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
 .vault-tools-output {
   background: var(--background-secondary);
   padding: 10px;
@@ -96,7 +101,7 @@
   border: none;
   padding: 0;
   text-align: left;
-  color: var(--text-accent);
+  color: var(--link-color);
   cursor: pointer;
 }
 
@@ -118,4 +123,61 @@
 
 .vault-tools-severity-info {
   color: var(--text-muted);
+}
+
+/* Loading state */
+.vault-tools-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.vault-tools-loading::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state */
+.vault-tools-error {
+  padding: 12px;
+  background: var(--background-modifier-error);
+  border-radius: 6px;
+  color: var(--text-error);
+}
+
+/* Health colors */
+.health-healthy {
+  color: var(--color-green);
+}
+
+.health-warning {
+  color: var(--color-orange);
+}
+
+.health-critical {
+  color: var(--color-red);
+}
+
+@media (max-width: 300px) {
+  .vault-tools-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-tools-actions-grid {
+    grid-template-columns: 1fr;
+  }
 }

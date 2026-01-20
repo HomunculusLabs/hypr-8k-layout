@@ -1,4 +1,4 @@
-import { ItemView, type WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, Notice, type WorkspaceLeaf, setIcon } from 'obsidian';
 import type { LinkCheckResult } from '../lib/link-check';
 import type { FrontmatterLintResult } from '../lib/lint';
 import type { ProjectHealthResult } from '../lib/project-health';
@@ -12,6 +12,7 @@ export const VIEW_TYPE_VAULT_TOOLS = 'vault-tools-view';
 export class VaultToolsSidebarView extends ItemView {
   plugin: VaultToolsPlugin;
   private outputEl: HTMLElement | null = null;
+  private statsGridEl: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: VaultToolsPlugin) {
     super(leaf);
@@ -37,6 +38,7 @@ export class VaultToolsSidebarView extends ItemView {
   async onClose(): Promise<void> {
     this.contentEl.empty();
     this.outputEl = null;
+    this.statsGridEl = null;
   }
 
   async render(): Promise<void> {
@@ -55,18 +57,11 @@ export class VaultToolsSidebarView extends ItemView {
     const section = container.createDiv({ cls: 'vault-tools-section' });
     section.createEl('h5', { text: 'Quick Stats' });
 
-    const statsGrid = section.createDiv({ cls: 'vault-tools-stats-grid' });
+    this.statsGridEl = section.createDiv({ cls: 'vault-tools-stats-grid' });
 
     try {
       const stats = await this.plugin.getQuickStats();
-      this.createStatItem(statsGrid, 'Notes', stats.noteCount.toString());
-      this.createStatItem(
-        statsGrid,
-        'Words',
-        this.formatNumber(stats.wordCount),
-      );
-      this.createStatItem(statsGrid, 'Links', stats.linkCount.toString());
-      this.createStatItem(statsGrid, 'Orphans', stats.orphanCount.toString());
+      this.renderStats(stats);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to load stats.';
@@ -137,6 +132,80 @@ export class VaultToolsSidebarView extends ItemView {
       text: 'Run an action to see results here.',
       cls: 'vault-tools-output-placeholder',
     });
+  }
+
+  async runWithLoading<T>(
+    action: () => Promise<T>,
+    label: string,
+  ): Promise<T | null> {
+    if (!this.outputEl) {
+      try {
+        return await action();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        new Notice(`Vault Tools: ${label} failed - ${message}`);
+        return null;
+      }
+    }
+
+    this.outputEl.empty();
+    const loadingEl = this.outputEl.createDiv({ cls: 'vault-tools-loading' });
+    loadingEl.createSpan({ text: `Running ${label}...` });
+
+    try {
+      const result = await action();
+      loadingEl.remove();
+      return result;
+    } catch (error) {
+      loadingEl.remove();
+      this.showError(error, label);
+      return null;
+    }
+  }
+
+  async refreshStats(): Promise<void> {
+    const stats = await this.runWithLoading(
+      () => this.plugin.getQuickStats(),
+      'stats',
+    );
+    if (stats) this.renderStats(stats);
+  }
+
+  private renderStats(stats: {
+    noteCount: number;
+    wordCount: number;
+    linkCount: number;
+    orphanCount: number;
+  }): void {
+    if (!this.statsGridEl) return;
+    this.statsGridEl.empty();
+    this.createStatItem(this.statsGridEl, 'Notes', stats.noteCount.toString());
+    this.createStatItem(
+      this.statsGridEl,
+      'Words',
+      this.formatNumber(stats.wordCount),
+    );
+    this.createStatItem(this.statsGridEl, 'Links', stats.linkCount.toString());
+    this.createStatItem(
+      this.statsGridEl,
+      'Orphans',
+      stats.orphanCount.toString(),
+    );
+  }
+
+  private showError(error: unknown, context: string): void {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
+    if (!this.outputEl) {
+      new Notice(`Vault Tools: ${context} failed - ${message}`);
+      return;
+    }
+
+    this.outputEl.empty();
+    const errorEl = this.outputEl.createDiv({ cls: 'vault-tools-error' });
+    errorEl.createEl('strong', { text: `Error running ${context}` });
+    errorEl.createEl('p', { text: message });
+    new Notice(`Vault Tools: ${context} failed - ${message}`);
   }
 
   showOutput(content: string | HTMLElement): void {
@@ -402,8 +471,10 @@ export class VaultToolsSidebarView extends ItemView {
     projects: ProjectHealthResult['projects'],
   ): void {
     const group = container.createDiv({ cls: 'vault-tools-output-group' });
+    const statusClass =
+      title.toLowerCase() === 'paused' ? '' : `health-${title.toLowerCase()}`;
     group.createEl('div', {
-      cls: 'vault-tools-output-summary',
+      cls: `vault-tools-output-summary ${statusClass}`.trim(),
       text: `${title} (${projects.length})`,
     });
 
