@@ -100,7 +100,7 @@
 - [x] Write stale-check command documentation [038-docs-stale-check.md]
 - [x] Review stale-check documentation [053-review-docs-stale-check.md]
 - [x] Write link-check command documentation [039-docs-link-check.md]
-- [ ] Review link-check documentation [054-review-docs-link-check.md]
+- [x] Review link-check documentation [054-review-docs-link-check.md]
 
 ## Priority 11 - Library Documentation
 
