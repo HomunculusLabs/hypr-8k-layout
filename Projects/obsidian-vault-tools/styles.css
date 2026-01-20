@@ -1,7 +1,66 @@
-.vault-tools-view {
-  padding: 16px;
+.vault-tools-container {
+  padding: 10px;
 }
 
-.vault-tools-view h2 {
-  margin: 0 0 8px;
+.vault-tools-section {
+  margin-bottom: 20px;
+}
+
+.vault-tools-section h5 {
+  margin: 0 0 10px 0;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  text-transform: uppercase;
+}
+
+.vault-tools-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.vault-tools-stat-item {
+  background: var(--background-secondary);
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.vault-tools-stat-item .stat-value {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.vault-tools-stat-item .stat-label {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.vault-tools-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.vault-tools-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.vault-tools-output {
+  background: var(--background-secondary);
+  padding: 10px;
+  border-radius: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.vault-tools-output pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.85em;
 }
