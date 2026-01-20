@@ -72,10 +72,11 @@ export async function loadConfig(
 ): Promise<VaultToolsConfig> {
 	const configPath = await findConfigFile(overridePath);
 	const parsed = configPath === null ? {} : await loadConfigFile(configPath);
-	let config = mergeWithDefaults(parsed);
 	const baseDir = configPath ? path.dirname(configPath) : process.cwd();
-	config = normalizeConfigPaths(config, baseDir);
-	config = applyCliOverrides(config, cliOverrides);
+	const config = applyCliOverrides(
+		normalizeConfigPaths(mergeWithDefaults(parsed), baseDir),
+		cliOverrides,
+	);
 	await validateVaultPath(config.vault.path);
 	return config;
 }
@@ -161,51 +162,40 @@ async function loadConfigFile(
 
 function mergeWithDefaults(parsed: Record<string, unknown>): VaultToolsConfig {
 	const legacy = coerceLegacyConfig(parsed);
-	const vault =
-		(typeof parsed.vault === "object" && parsed.vault !== null
-			? parsed.vault
-			: legacy.vault) ?? {};
-	const output =
-		(typeof parsed.output === "object" && parsed.output !== null
-			? parsed.output
-			: legacy.output) ?? {};
+	const vault = asRecord(parsed.vault) ?? legacy.vault ?? {};
+	const output = asRecord(parsed.output) ?? legacy.output ?? {};
 	const schemas = normalizeSchemas(parsed.schemas);
 
 	return {
 		vault: {
-			path:
-				typeof (vault as Record<string, unknown>).path === "string"
-					? (vault as Record<string, unknown>).path
-					: DEFAULT_CONFIG.vault.path,
-			todosFolder:
-				typeof (vault as Record<string, unknown>).todosFolder === "string"
-					? (vault as Record<string, unknown>).todosFolder
-					: DEFAULT_CONFIG.vault.todosFolder,
-			projectsFolder:
-				typeof (vault as Record<string, unknown>).projectsFolder === "string"
-					? (vault as Record<string, unknown>).projectsFolder
-					: DEFAULT_CONFIG.vault.projectsFolder,
-			dailyFolder:
-				typeof (vault as Record<string, unknown>).dailyFolder === "string"
-					? (vault as Record<string, unknown>).dailyFolder
-					: DEFAULT_CONFIG.vault.dailyFolder,
-			templatesFolder:
-				typeof (vault as Record<string, unknown>).templatesFolder === "string"
-					? (vault as Record<string, unknown>).templatesFolder
-					: DEFAULT_CONFIG.vault.templatesFolder,
+			path: readString(vault, "path", DEFAULT_CONFIG.vault.path),
+			todosFolder: readString(
+				vault,
+				"todosFolder",
+				DEFAULT_CONFIG.vault.todosFolder,
+			),
+			projectsFolder: readString(
+				vault,
+				"projectsFolder",
+				DEFAULT_CONFIG.vault.projectsFolder,
+			),
+			dailyFolder: readString(
+				vault,
+				"dailyFolder",
+				DEFAULT_CONFIG.vault.dailyFolder,
+			),
+			templatesFolder: readString(
+				vault,
+				"templatesFolder",
+				DEFAULT_CONFIG.vault.templatesFolder,
+			),
 		},
 		output: {
-			format: isOutputFormat((output as Record<string, unknown>).format)
-				? ((output as Record<string, unknown>).format as OutputFormat)
+			format: isOutputFormat(output.format)
+				? (output.format as OutputFormat)
 				: DEFAULT_CONFIG.output.format,
-			color:
-				typeof (output as Record<string, unknown>).color === "boolean"
-					? (output as Record<string, unknown>).color
-					: DEFAULT_CONFIG.output.color,
-			verbose:
-				typeof (output as Record<string, unknown>).verbose === "boolean"
-					? (output as Record<string, unknown>).verbose
-					: DEFAULT_CONFIG.output.verbose,
+			color: readBoolean(output, "color", DEFAULT_CONFIG.output.color),
+			verbose: readBoolean(output, "verbose", DEFAULT_CONFIG.output.verbose),
 		},
 		schemas,
 	};
@@ -215,32 +205,18 @@ function coerceLegacyConfig(
 	parsed: Record<string, unknown>,
 ): Partial<VaultToolsConfig> {
 	const legacy: Partial<VaultToolsConfig> = {};
-	if (typeof parsed.vault_path === "string") {
-		legacy.vault = { ...(legacy.vault ?? {}), path: parsed.vault_path };
-	}
-	if (typeof parsed.todos_path === "string") {
-		legacy.vault = {
-			...(legacy.vault ?? {}),
-			todosFolder: parsed.todos_path,
-		};
-	}
-	if (typeof parsed.projects_path === "string") {
-		legacy.vault = {
-			...(legacy.vault ?? {}),
-			projectsFolder: parsed.projects_path,
-		};
-	}
-	if (typeof parsed.daily_notes_path === "string") {
-		legacy.vault = {
-			...(legacy.vault ?? {}),
-			dailyFolder: parsed.daily_notes_path,
-		};
-	}
-	if (typeof parsed.templates_path === "string") {
-		legacy.vault = {
-			...(legacy.vault ?? {}),
-			templatesFolder: parsed.templates_path,
-		};
+	const mappings = [
+		["vault_path", "path"],
+		["todos_path", "todosFolder"],
+		["projects_path", "projectsFolder"],
+		["daily_notes_path", "dailyFolder"],
+		["templates_path", "templatesFolder"],
+	] as const;
+
+	for (const [legacyKey, modernKey] of mappings) {
+		const value = parsed[legacyKey];
+		if (typeof value !== "string") continue;
+		legacy.vault = { ...(legacy.vault ?? {}), [modernKey]: value };
 	}
 	return legacy;
 }
@@ -293,24 +269,18 @@ function isOutputFormat(value: unknown): value is OutputFormat {
 }
 
 function normalizeSchemas(raw: unknown): FrontmatterSchemas {
-	if (!raw || typeof raw !== "object") {
-		return {};
-	}
-
+	const schemasRaw = asRecord(raw);
+	if (!schemasRaw) return {};
 	const schemas: FrontmatterSchemas = {};
-	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-		if (!value || typeof value !== "object") continue;
-		const schema = value as Record<string, unknown>;
+	for (const [key, value] of Object.entries(schemasRaw)) {
+		const schema = asRecord(value);
+		if (!schema) continue;
 		const fields: Record<string, FrontmatterSchemaField> = {};
-		const fieldsRaw =
-			typeof schema.fields === "object" && schema.fields !== null
-				? (schema.fields as Record<string, unknown>)
-				: {};
+		const fieldsRaw = asRecord(schema.fields) ?? {};
 
 		for (const [fieldName, fieldValue] of Object.entries(fieldsRaw)) {
-			if (!fieldValue || typeof fieldValue !== "object") continue;
-			const field = fieldValue as Record<string, unknown>;
-			if (!isFrontmatterFieldType(field.type)) continue;
+			const field = asRecord(fieldValue);
+			if (!field || !isFrontmatterFieldType(field.type)) continue;
 			const values = Array.isArray(field.values)
 				? field.values.filter(
 						(item): item is string => typeof item === "string",
@@ -338,12 +308,9 @@ function normalizeSchemas(raw: unknown): FrontmatterSchemas {
 function normalizeSchemaMatch(
 	raw: unknown,
 ): FrontmatterSchemaMatch | undefined {
-	if (!raw || typeof raw !== "object") return undefined;
-	const match = raw as Record<string, unknown>;
-	const frontmatter =
-		typeof match.frontmatter === "object" && match.frontmatter !== null
-			? (match.frontmatter as Record<string, unknown>)
-			: undefined;
+	const match = asRecord(raw);
+	if (!match) return undefined;
+	const frontmatter = asRecord(match.frontmatter) ?? undefined;
 
 	return {
 		folder: typeof match.folder === "string" ? match.folder : undefined,
@@ -365,4 +332,27 @@ async function validateVaultPath(vaultPath: string): Promise<void> {
 	if (!(await fileExists(vaultPath))) {
 		throw new Error(`Vault path does not exist: ${vaultPath}`);
 	}
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	return value as Record<string, unknown>;
+}
+
+function readString(
+	record: Record<string, unknown>,
+	key: string,
+	fallback: string,
+): string {
+	const value = record[key];
+	return typeof value === "string" ? value : fallback;
+}
+
+function readBoolean(
+	record: Record<string, unknown>,
+	key: string,
+	fallback: boolean,
+): boolean {
+	const value = record[key];
+	return typeof value === "boolean" ? value : fallback;
 }
