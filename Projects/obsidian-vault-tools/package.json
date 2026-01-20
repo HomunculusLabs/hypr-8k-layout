@@ -1,0 +1,30 @@
+{
+	"name": "vault-tools",
+	"version": "0.1.0",
+	"type": "module",
+	"bin": "./src/cli.ts",
+	"scripts": {
+		"dev": "bun run src/cli.ts",
+		"build": "bun build src/cli.ts --compile --outfile vault-tools",
+		"dev:plugin": "node esbuild.config.mjs",
+		"build:plugin": "node esbuild.config.mjs production",
+		"dev:cli": "bun run src/cli.ts",
+		"build:cli": "bun build src/cli.ts --compile --outfile vault-tools",
+		"test": "bun test",
+		"test:unit": "bun test src/",
+		"test:integration": "bun test tests/integration.test.ts",
+		"lint": "bun run biome check ."
+	},
+	"dependencies": {
+		"commander": "^12.0.0",
+		"yaml": "^2.4.0",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/node": "^20.0.0",
+		"bun-types": "latest",
+		"esbuild": "^0.20.0",
+		"obsidian": "^1.11.4"
+	}
+}

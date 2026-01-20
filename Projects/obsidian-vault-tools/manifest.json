@@ -1,0 +1,9 @@
+{
+  "id": "vault-tools",
+  "name": "Vault Tools",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Vault automation: stats, health dashboards, task queues, linting, and more",
+  "author": "t3rpz",
+  "isDesktopOnly": false
+}
