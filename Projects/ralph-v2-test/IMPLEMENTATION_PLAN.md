@@ -67,7 +67,7 @@
 - [x] Add edge case tests (symlinks, YAML, dates) [018-edge-case-tests.md]
 - [x] Review edge case tests [025-review-edge-tests.md]
 - [x] Consolidate magic strings and constants [019-consolidate-constants.md]
-- [ ] Review constants consolidation [026-review-constants.md]
+- [x] Review constants consolidation [026-review-constants.md]
 
 ## Priority 8 - Architecture Documentation
 
