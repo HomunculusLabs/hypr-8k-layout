@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { syncShoppingList } from "./shopping-sync";
+import { syncShoppingList } from "../lib/shopping-sync";
 
 async function setupVault(): Promise<{
 	vaultPath: string;
