@@ -7,6 +7,7 @@ import { runProjectHealth } from "./commands/project-health";
 import { runRalphQueue } from "./commands/ralph-queue";
 import { runShoppingSync } from "./commands/shopping-sync";
 import { runStaleCheck } from "./commands/stale-check";
+import { runStats } from "./commands/stats";
 import { runTemplateCreate, runTemplateList } from "./commands/template";
 import { runWeeklyRollup } from "./commands/weekly-rollup";
 
@@ -302,6 +303,30 @@ program
 			output: options.output,
 			status: options.status,
 			sort: options.sort,
+		});
+	});
+
+program
+	.command("stats")
+	.description("Generate statistics about the vault")
+	.option(
+		"--section <section...>",
+		"Sections to include (counts, links, tags, activity, frontmatter)",
+	)
+	.option("--path <path>", "Limit stats to a folder")
+	.option("--output <format>", "Output format (console, markdown, json)")
+	.option("--compare <path>", "Compare against a previous stats JSON snapshot")
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runStats({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			output: options.output,
+			section: options.section,
+			path: options.path,
+			compare: options.compare,
 		});
 	});
 

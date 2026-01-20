@@ -33,7 +33,7 @@
 
 ## Priority 4 - Nice to Have
 
-- [ ] Vault Stats [010-vault-stats.md]
+- [x] Vault Stats [010-vault-stats.md]
 
 ## Priority 5 - Refinement (clean, readable, lightweight)
 
