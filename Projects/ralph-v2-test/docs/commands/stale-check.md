@@ -129,4 +129,3 @@ bun run src/cli.ts stale-check --path "8 - Projects/Alpha"
 ## Related
 
 - [[configuration]]
-- [[lib/stale-check]]
