@@ -3,7 +3,10 @@ import { parse } from 'yaml';
 import { createObsidianAdapter, type VaultAdapter } from '../lib/adapters';
 import { checkBrokenLinks } from '../lib/link-check';
 import { lintFrontmatter } from '../lib/lint';
+import { buildRalphQueue } from '../lib/ralph-queue';
 import { vaultToolsConfigSchema } from '../lib/schemas';
+import { syncShoppingList } from '../lib/shopping-sync';
+import { checkStaleTodos } from '../lib/stale-check';
 import { buildVaultStats } from '../lib/stats';
 import type { FrontmatterSchemas } from '../types';
 import { DEFAULT_SETTINGS, type VaultToolsSettings, VaultToolsSettingTab } from './settings';
@@ -15,6 +18,9 @@ export interface QuickStats {
   linkCount: number;
   orphanCount: number;
 }
+
+const DEFAULT_RALPH_MAX_TASKS = 5;
+const SHOPPING_LIST_PATH = 'Shopping List.md';
 
 export default class VaultToolsPlugin extends Plugin {
   private adapter: VaultAdapter;
@@ -171,7 +177,26 @@ export default class VaultToolsPlugin extends Plugin {
   }
 
   runStaleCheck(): void {
-    this.showPlaceholderOutput('Stale Todos');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Stale Todos.');
+      return;
+    }
+
+    view.showOutput('Running stale check...');
+    void (async () => {
+      try {
+        const result = await checkStaleTodos(
+          this.adapter,
+          this.settings.todosFolder
+        );
+        view.showStaleCheckResult(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to run stale check.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   runProjectHealth(): void {
@@ -179,11 +204,54 @@ export default class VaultToolsPlugin extends Plugin {
   }
 
   runRalphQueue(): void {
-    this.showPlaceholderOutput('Ralph Queue');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Ralph Queue.');
+      return;
+    }
+
+    view.showOutput('Building Ralph queue...');
+    void (async () => {
+      try {
+        const result = await buildRalphQueue({
+          adapter: this.adapter,
+          vaultPath: '',
+          todosPath: this.settings.todosFolder,
+          projectsPath: this.settings.projectsFolder,
+          maxTasks: DEFAULT_RALPH_MAX_TASKS,
+          includeLowPriority: false,
+        });
+        view.showRalphQueue(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to build Ralph queue.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   runShoppingSync(): void {
-    this.showPlaceholderOutput('Shopping Sync');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Shopping Sync.');
+      return;
+    }
+
+    view.showOutput('Syncing shopping list...');
+    void (async () => {
+      try {
+        const result = await syncShoppingList({
+          adapter: this.adapter,
+          todosPath: this.settings.todosFolder,
+          shoppingListPath: SHOPPING_LIST_PATH,
+        });
+        view.showShoppingSyncResult(result, SHOPPING_LIST_PATH);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to sync shopping list.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   private showPlaceholderOutput(actionName: string): void {

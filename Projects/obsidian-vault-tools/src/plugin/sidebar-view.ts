@@ -1,6 +1,9 @@
 import { ItemView, type WorkspaceLeaf, setIcon } from 'obsidian';
 import type { LinkCheckResult } from '../lib/link-check';
 import type { FrontmatterLintResult } from '../lib/lint';
+import type { RalphQueueResult } from '../lib/ralph-queue';
+import type { ShoppingSyncResult } from '../lib/shopping-sync';
+import type { StaleCheckResult } from '../lib/stale-check';
 import type VaultToolsPlugin from './main';
 
 export const VIEW_TYPE_VAULT_TOOLS = 'vault-tools-view';
@@ -231,6 +234,129 @@ export class VaultToolsSidebarView extends ItemView {
           });
         }
       }
+    }
+  }
+
+  showStaleCheckResult(result: StaleCheckResult): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Files scanned: ${result.scanned}, stale todos: ${result.staleCount}`,
+    });
+
+    if (result.staleCount === 0) {
+      container.createDiv({
+        cls: 'vault-tools-output-placeholder',
+        text: 'No stale todos found.',
+      });
+      return;
+    }
+
+    for (const todo of result.todos) {
+      const row = container.createDiv({ cls: 'vault-tools-output-row' });
+      const link = row.createEl('button', {
+        cls: 'vault-tools-link',
+        text: todo.title,
+      });
+      link.addEventListener('click', () => {
+        void this.plugin.openNote(todo.path);
+      });
+      row.createDiv({
+        cls: 'vault-tools-output-detail',
+        text: `${todo.daysSinceModified} days • ${todo.status}`,
+      });
+    }
+  }
+
+  showRalphQueue(result: RalphQueueResult): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Queued: ${result.stats.queued}, candidates: ${result.stats.totalCandidates}`,
+    });
+
+    if (result.tasks.length === 0) {
+      container.createDiv({
+        cls: 'vault-tools-output-placeholder',
+        text: 'No tasks queued.',
+      });
+      if (result.skipped.length > 0) {
+        for (const skipped of result.skipped) {
+          const row = container.createDiv({ cls: 'vault-tools-output-row' });
+          const link = row.createEl('button', {
+            cls: 'vault-tools-link',
+            text: skipped.title,
+          });
+          link.addEventListener('click', () => {
+            void this.plugin.openNote(skipped.todoPath);
+          });
+          row.createDiv({
+            cls: 'vault-tools-output-detail',
+            text: skipped.reason,
+          });
+        }
+      }
+      return;
+    }
+
+    for (const task of result.tasks) {
+      const row = container.createDiv({ cls: 'vault-tools-output-row' });
+      const title = task.project?.name
+        ? `${task.title} [${task.project.name}]`
+        : task.title;
+      const link = row.createEl('button', {
+        cls: 'vault-tools-link',
+        text: title,
+      });
+      link.addEventListener('click', () => {
+        void this.plugin.openNote(task.todoPath);
+      });
+      row.createDiv({
+        cls: 'vault-tools-output-detail',
+        text: `Score: ${task.score} | Est: ${task.estimate.label}`,
+      });
+    }
+  }
+
+  showShoppingSyncResult(
+    result: ShoppingSyncResult,
+    shoppingListPath = 'Shopping List.md',
+  ): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Items: ${result.items}, categories: ${result.categories}, todo updates: ${result.todoFilesUpdated}`,
+    });
+
+    const listRow = container.createDiv({ cls: 'vault-tools-output-row' });
+    const listLink = listRow.createEl('button', {
+      cls: 'vault-tools-link',
+      text: shoppingListPath,
+    });
+    listLink.addEventListener('click', () => {
+      void this.plugin.openNote(shoppingListPath);
+    });
+    listRow.createDiv({
+      cls: 'vault-tools-output-detail',
+      text: result.shoppingListUpdated
+        ? 'Shopping list updated.'
+        : 'Shopping list already up to date.',
+    });
+
+    for (const warning of result.warnings) {
+      container.createDiv({
+        cls: 'vault-tools-output-detail',
+        text: warning,
+      });
     }
   }
 
