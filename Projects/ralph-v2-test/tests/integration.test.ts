@@ -1,35 +1,72 @@
 import { $ } from "bun";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 const VAULT = path.resolve("tests/fixtures/test-vault");
 const CONFIG = path.join(VAULT, "vault-tools.config.yaml");
+const REPORT_FILES = [
+	"Vault Stats.md",
+	"Broken Links.md",
+	"Stale Todos Report.md",
+];
 
 async function runCli(args: string[]) {
 	return await $`bun run src/cli.ts ${args}`;
 }
 
+type OutputItem = { type: string; message: string; details?: string };
+type OutputPayload = {
+	success: boolean;
+	items: OutputItem[];
+	summary: { total: number; errors: number; warnings: number };
+};
+
+function findOutputItem(items: OutputItem[], matcher: (item: OutputItem) => boolean) {
+	const item = items.find(matcher);
+	expect(item).toBeTruthy();
+	return item as OutputItem;
+}
+
+function extractCount(details: string | undefined, label: string): number {
+	const match = new RegExp(`${label}:\\s*(\\d+)`).exec(details ?? "");
+	expect(match).toBeTruthy();
+	return Number(match?.[1]);
+}
+
 let tempDir = "";
 
 beforeAll(async () => {
+	await cleanupReports();
 	tempDir = await mkdtemp(path.join(os.tmpdir(), "vault-tools-int-"));
 });
 
 afterAll(async () => {
 	if (!tempDir) return;
+	await cleanupReports();
 	await rm(tempDir, { recursive: true, force: true });
 });
 
+async function cleanupReports() {
+	await Promise.all(
+		REPORT_FILES.map((file) =>
+			rm(path.join(VAULT, file), { force: true }),
+		),
+	);
+}
 describe("Integration Tests", () => {
 	describe("stats command", () => {
 		it("produces valid JSON output", async () => {
 			const result = await runCli(["--config", CONFIG, "--json", "stats"]);
 			const parsed = await result.json();
-			expect(parsed.totals.notes).toBeGreaterThan(0);
+			expect(parsed.totals.notes).toBe(15);
 			expect(parsed.links.total).toBeGreaterThan(0);
-			expect(parsed.links.orphans.length).toBeGreaterThan(0);
+			expect(parsed.links.orphans).toContain("Orphan Note");
+			const dailyCounts = parsed.countsByFolder.find(
+				(item: { folder: string; count: number }) => item.folder === "Daily",
+			);
+			expect(dailyCounts?.count).toBe(3);
 		});
 
 		it("produces console output without error", async () => {
@@ -61,8 +98,14 @@ describe("Integration Tests", () => {
 				"json",
 			]);
 			const parsed = await result.json();
-			expect(parsed.projects.length).toBeGreaterThan(0);
-			expect(parsed.summary.total).toBeGreaterThan(0);
+			expect(parsed.summary.total).toBe(3);
+			expect(parsed.summary.active).toBe(2);
+			expect(parsed.summary.healthy).toBe(1);
+			expect(parsed.summary.critical).toBe(1);
+			const names = parsed.projects.map((project: { name: string }) => project.name);
+			expect(names).toContain("Active Project");
+			expect(names).toContain("Stale Project");
+			expect(names).toContain("Dead Project");
 		});
 	});
 
@@ -77,7 +120,11 @@ describe("Integration Tests", () => {
 			]);
 			const parsed = await result.json();
 			expect(parsed.totalErrors).toBe(0);
-			expect(parsed.filesMatched).toBeGreaterThan(0);
+			expect(parsed.filesMatched).toBe(3);
+			expect(parsed.totalWarnings).toBe(1);
+			expect(parsed.issues.length).toBe(1);
+			expect(parsed.issues[0]?.field).toBe("blocker");
+			expect(parsed.issues[0]?.severity).toBe("warning");
 		});
 	});
 
@@ -91,9 +138,23 @@ describe("Integration Tests", () => {
 				"--output",
 				"report",
 			]);
-			const parsed = await result.json();
+			const parsed = (await result.json()) as OutputPayload;
 			expect(parsed.success).toBe(true);
-			expect(parsed.items.length).toBeGreaterThan(0);
+			const summaryItem = findOutputItem(
+				parsed.items,
+				(item) => item.message === "Broken links report generated",
+			);
+			expect(extractCount(summaryItem.details, "broken links")).toBeGreaterThan(0);
+			expect(
+				extractCount(summaryItem.details, "files with broken links"),
+			).toBeGreaterThan(0);
+			const reportItem = findOutputItem(parsed.items, (item) =>
+				item.message.startsWith("Report path:"),
+			);
+			const reportPath = reportItem.message.replace("Report path: ", "");
+			await access(reportPath);
+			const report = await readFile(reportPath, "utf8");
+			expect(report).toContain("Missing Note");
 		});
 	});
 
@@ -102,12 +163,28 @@ describe("Integration Tests", () => {
 			const result = await runCli([
 				"--config",
 				CONFIG,
+				"--json",
 				"stale-check",
 				"--output",
-				"console",
+				"report",
 			]);
-			const text = await result.text();
-			expect(text).toContain("Active todos");
+			const parsed = (await result.json()) as OutputPayload;
+			expect(parsed.success).toBe(true);
+			const summaryItem = findOutputItem(
+				parsed.items,
+				(item) => item.message === "Stale todo report generated",
+			);
+			expect(extractCount(summaryItem.details, "Active todos")).toBe(2);
+			expect(extractCount(summaryItem.details, "Stale")).toBe(2);
+			expect(extractCount(summaryItem.details, "Blocked stale")).toBe(1);
+			const reportItem = findOutputItem(parsed.items, (item) =>
+				item.message.startsWith("Report path:"),
+			);
+			const reportPath = reportItem.message.replace("Report path: ", "");
+			await access(reportPath);
+			const report = await readFile(reportPath, "utf8");
+			expect(report).toContain("[[Stale Project Todo]]");
+			expect(report).toContain("[[Blocked Todo]]");
 		});
 	});
 
@@ -120,8 +197,15 @@ describe("Integration Tests", () => {
 				"shopping-sync",
 				"--dry-run",
 			]);
-			const parsed = await result.json();
+			const parsed = (await result.json()) as OutputPayload;
 			expect(parsed.success).toBe(true);
+			const summaryItem = findOutputItem(
+				parsed.items,
+				(item) => item.message === "Shopping list dry run complete",
+			);
+			expect(summaryItem.details).toContain("Items: 3");
+			expect(summaryItem.details).toContain("Categories: 2");
+			expect(summaryItem.details).toContain("Todo updates: 0");
 		});
 	});
 
@@ -136,8 +220,16 @@ describe("Integration Tests", () => {
 				"2024-01-17",
 				"--dry-run",
 			]);
-			const parsed = await result.json();
+			const parsed = (await result.json()) as OutputPayload;
 			expect(parsed.success).toBe(true);
+			const summaryItem = findOutputItem(
+				parsed.items,
+				(item) => item.message === "Daily note dry run complete",
+			);
+			expect(extractCount(summaryItem.details, "Focus")).toBe(2);
+			expect(extractCount(summaryItem.details, "Blocked")).toBe(1);
+			expect(extractCount(summaryItem.details, "Rollover")).toBe(1);
+			expect(extractCount(summaryItem.details, "Ralph")).toBe(0);
 		});
 	});
 
@@ -172,7 +264,8 @@ describe("Integration Tests", () => {
 				"json",
 			]);
 			const parsed = await result.json();
-			expect(parsed.tasks.length).toBeGreaterThan(0);
+			expect(parsed.tasks.length).toBe(1);
+			expect(parsed.tasks[0]?.title).toBe("Active Project Todo");
 		});
 	});
 
@@ -206,8 +299,13 @@ describe("Integration Tests", () => {
 				"--output",
 				outputPath,
 			]);
-			const parsed = await result.json();
+			const parsed = (await result.json()) as OutputPayload;
 			expect(parsed.success).toBe(true);
+			const summaryItem = findOutputItem(
+				parsed.items,
+				(item) => item.message === "Template dry run complete",
+			);
+			expect(summaryItem.details).toBe(outputPath);
 		});
 	});
 
