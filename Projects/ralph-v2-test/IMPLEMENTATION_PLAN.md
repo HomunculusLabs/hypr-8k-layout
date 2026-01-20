@@ -21,7 +21,7 @@
 
 ## Priority 2 - Hygiene & Maintenance
 
-- [ ] Stale Todo Detector [002-stale-todo-detector.md]
+- [x] Stale Todo Detector [002-stale-todo-detector.md]
 - [ ] Broken Link Checker [003-broken-link-checker.md]
 - [ ] Frontmatter Linter [004-frontmatter-linter.md]
 
@@ -34,6 +34,22 @@
 ## Priority 4 - Nice to Have
 
 - [ ] Vault Stats [010-vault-stats.md]
+
+## Priority 5 - Refinement (clean, readable, lightweight)
+
+- [ ] Refactor src/lib/ shared utilities [011-refine-lib.md]
+- [ ] Refactor config parser [011-refine-lib.md]
+- [ ] Refactor shopping-sync command [012-refine-commands.md]
+- [ ] Refactor daily-populate command [012-refine-commands.md]
+- [ ] Refactor template command [012-refine-commands.md]
+- [ ] Refactor stale-check command [012-refine-commands.md]
+- [ ] Refactor link-check command [012-refine-commands.md]
+- [ ] Refactor lint command [012-refine-commands.md]
+- [ ] Refactor ralph-queue command [012-refine-commands.md]
+- [ ] Refactor project-health command [012-refine-commands.md]
+- [ ] Refactor weekly-rollup command [012-refine-commands.md]
+- [ ] Refactor stats command [012-refine-commands.md]
+- [ ] Final cleanup: remove dead code, consolidate types [013-final-cleanup.md]
 
 ---
 

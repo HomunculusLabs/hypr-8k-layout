@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { runDailyPopulate } from "./commands/daily-populate";
 import { runShoppingSync } from "./commands/shopping-sync";
+import { runStaleCheck } from "./commands/stale-check";
 import { runTemplateCreate, runTemplateList } from "./commands/template";
 
 const program = new Command();
@@ -56,6 +57,57 @@ program
 			create: options.create,
 			dryRun: options.dryRun,
 			skip: options.skip,
+		});
+	});
+
+program
+	.command("stale-check")
+	.description("Detect stale todos and generate a report")
+	.option("--output <mode>", "Output mode (report, inline, console)", "report")
+	.option(
+		"--high-days <days>",
+		"High priority staleness threshold",
+		Number.parseInt,
+	)
+	.option(
+		"--medium-days <days>",
+		"Medium priority staleness threshold",
+		Number.parseInt,
+	)
+	.option(
+		"--low-days <days>",
+		"Low priority staleness threshold",
+		Number.parseInt,
+	)
+	.option(
+		"--blocked-days <days>",
+		"Blocked staleness threshold",
+		Number.parseInt,
+	)
+	.option("--path <path>", "Override todos folder path")
+	.option(
+		"--exclude <pattern>",
+		"Exclude todos matching pattern",
+		(value, previous: string[] = []) => {
+			previous.push(value);
+			return previous;
+		},
+		[],
+	)
+	.action(async (options, command) => {
+		const parent = command.parent?.opts() ?? {};
+		await runStaleCheck({
+			configPath: parent.config,
+			vaultPath: parent.vault,
+			verbose: parent.verbose,
+			json: parent.json,
+			outputMode: options.output,
+			highDays: options.highDays,
+			mediumDays: options.mediumDays,
+			lowDays: options.lowDays,
+			blockedDays: options.blockedDays,
+			path: options.path,
+			exclude: options.exclude,
 		});
 	});
 
