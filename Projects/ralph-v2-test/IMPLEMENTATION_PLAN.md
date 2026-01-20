@@ -71,8 +71,8 @@
 
 ## Priority 8 - Architecture Documentation
 
-- [ ] Add README and ARCHITECTURE.md [020-architecture-docs.md]
-- [ ] Review architecture documentation [027-review-architecture-docs.md]
+- [x] Add README and ARCHITECTURE.md [020-architecture-docs.md]
+- [x] Review architecture documentation [027-review-architecture-docs.md]
 
 ## Priority 9 - Documentation Infrastructure
 
