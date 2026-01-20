@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -24,7 +25,11 @@ export interface VaultStatsOptions {
 
 const REPORT_FILENAME = "Vault Stats.md";
 
-export async function runStats(options: VaultStatsOptions): Promise<void> {
+export const runStats = createCommandRunner(
+	async (
+		options: VaultStatsOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -37,39 +42,36 @@ export async function runStats(options: VaultStatsOptions): Promise<void> {
 	const reportPath = path.join(config.vault.path, REPORT_FILENAME);
 	const comparePath = resolveComparePath(options.compare, config.vault.path);
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 
-	try {
-		const result = await buildVaultStats({
-			vaultPath: config.vault.path,
-			rootPath,
-			reportPath,
-			sections,
-			schemas: config.schemas ?? {},
-		});
+	const result = await buildVaultStats({
+		vaultPath: config.vault.path,
+		rootPath,
+		reportPath,
+		sections,
+		schemas: config.schemas ?? {},
+	});
 
-		const comparison = comparePath
-			? await compareStats(result, comparePath)
-			: null;
+	const comparison = comparePath
+		? await compareStats(result, comparePath)
+		: null;
 
-		if (config.output.format === "json") {
-			const payload = comparison ? { ...result, comparison } : { ...result };
-			console.log(JSON.stringify(payload, null, 2));
-			return;
-		}
-
-		const markdown = renderMarkdownReport(result, comparison, sections);
-		if (config.output.format === "markdown") {
-			await writeFile(reportPath, markdown, "utf8");
-			output(buildReportOutputItems(result, reportPath), outputOptions);
-			return;
-		}
-
-		console.log(renderConsoleReport(result, comparison, sections));
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+	if (config.output.format === "json") {
+		const payload = comparison ? { ...result, comparison } : { ...result };
+		console.log(JSON.stringify(payload, null, 2));
+		return;
 	}
-}
+
+	const markdown = renderMarkdownReport(result, comparison, sections);
+	if (config.output.format === "markdown") {
+		await writeFile(reportPath, markdown, "utf8");
+		output(buildReportOutputItems(result, reportPath), outputOptions);
+		return;
+	}
+
+	console.log(renderConsoleReport(result, comparison, sections));
+},
+);
 
 export { buildVaultStats } from "../lib/stats";
 
@@ -116,12 +118,4 @@ function buildReportOutputItems(
 		});
 	}
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

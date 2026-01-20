@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -23,9 +24,11 @@ export interface ProjectHealthOptions {
 
 const DASHBOARD_FILENAME = "Projects Dashboard.md";
 
-export async function runProjectHealth(
-	options: ProjectHealthOptions,
-): Promise<void> {
+export const runProjectHealth = createCommandRunner(
+	async (
+		options: ProjectHealthOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -33,41 +36,38 @@ export async function runProjectHealth(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(
 		options.output ?? (options.json ? "json" : "console"),
 		config.output.format,
 	);
 
-	try {
-		const result = await buildProjectHealth({
-			projectsPath: config.vault.projectsFolder,
-			todosPath: config.vault.todosFolder,
-			statusFilter: options.status,
-			sort: options.sort,
-		});
+	const result = await buildProjectHealth({
+		projectsPath: config.vault.projectsFolder,
+		todosPath: config.vault.todosFolder,
+		statusFilter: options.status,
+		sort: options.sort,
+	});
 
-		if (outputMode === "json") {
-			console.log(JSON.stringify(result, null, 2));
-			return;
-		}
-
-		if (outputMode === "dashboard") {
-			const dashboardPath = path.join(config.vault.path, DASHBOARD_FILENAME);
-			const markdown = formatDashboardMarkdown(result);
-			await writeFile(dashboardPath, markdown, "utf8");
-			output(buildDashboardOutputItems(result, dashboardPath), {
-				...outputOptions,
-				format: "console",
-			});
-			return;
-		}
-
-		console.log(formatDashboardMarkdown(result));
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+	if (outputMode === "json") {
+		console.log(JSON.stringify(result, null, 2));
+		return;
 	}
-}
+
+	if (outputMode === "dashboard") {
+		const dashboardPath = path.join(config.vault.path, DASHBOARD_FILENAME);
+		const markdown = formatDashboardMarkdown(result);
+		await writeFile(dashboardPath, markdown, "utf8");
+		output(buildDashboardOutputItems(result, dashboardPath), {
+			...outputOptions,
+			format: "console",
+		});
+		return;
+	}
+
+	console.log(formatDashboardMarkdown(result));
+},
+);
 
 export { buildProjectHealth } from "../lib/project-health";
 
@@ -104,12 +104,4 @@ function buildDashboardOutputItems(
 		},
 		{ type: "info", message: `Dashboard path: ${dashboardPath}` },
 	];
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

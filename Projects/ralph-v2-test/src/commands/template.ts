@@ -1,4 +1,5 @@
 import readline from "node:readline/promises";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -36,9 +37,11 @@ export interface TemplateCreateOptions {
 	gitAdd?: boolean;
 }
 
-export async function runTemplateList(
-	options: TemplateListOptions,
-): Promise<void> {
+export const runTemplateList = createCommandRunner(
+	async (
+		options: TemplateListOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -47,29 +50,28 @@ export async function runTemplateList(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 
-	try {
-		const result = await listTemplates(config.vault.templatesFolder);
-		if (outputOptions.format === "json") {
-			console.log(JSON.stringify(result, null, 2));
-			return;
-		}
-
-		if (outputOptions.format === "markdown") {
-			console.log(formatTemplateListMarkdown(result.templates));
-			return;
-		}
-
-		console.log(formatTemplateListConsole(result.templates));
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+	const result = await listTemplates(config.vault.templatesFolder);
+	if (outputOptions.format === "json") {
+		console.log(JSON.stringify(result, null, 2));
+		return;
 	}
-}
 
-export async function runTemplateCreate(
-	options: TemplateCreateOptions,
-): Promise<void> {
+	if (outputOptions.format === "markdown") {
+		console.log(formatTemplateListMarkdown(result.templates));
+		return;
+	}
+
+	console.log(formatTemplateListConsole(result.templates));
+},
+);
+
+export const runTemplateCreate = createCommandRunner(
+	async (
+		options: TemplateCreateOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -78,6 +80,7 @@ export async function runTemplateCreate(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const interactive = Boolean(options.interactive);
 	const rl = interactive
 		? readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -119,13 +122,11 @@ export async function runTemplateCreate(
 		}
 
 		output(buildCreateOutputItems(result), outputOptions);
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
 	} finally {
 		rl?.close();
 	}
-}
+},
+);
 
 function buildOutputOptions(config: {
 	output: { format: string; color: boolean; verbose: boolean };
@@ -153,14 +154,6 @@ function buildCreateOutputItems(result: TemplateCreateResult): OutputItem[] {
 		});
 	}
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }
 
 function formatTemplateListConsole(templates: TemplateInfo[]): string {

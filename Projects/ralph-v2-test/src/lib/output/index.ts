@@ -17,3 +17,11 @@ export function output(items: OutputItem[], options: OutputOptions): void {
 		console.log(formatted);
 	}
 }
+
+export function reportError(error: unknown, options: OutputOptions): void {
+	const message = error instanceof Error ? error.message : "Unknown error";
+	output([{ type: "error", message }], {
+		...options,
+		format: "console",
+	});
+}

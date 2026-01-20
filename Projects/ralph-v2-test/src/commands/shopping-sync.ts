@@ -1,7 +1,13 @@
 import { watch } from "node:fs";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
-import { type OutputItem, type OutputOptions, output } from "../lib/output";
+import {
+	type OutputItem,
+	type OutputOptions,
+	output,
+	reportError,
+} from "../lib/output";
 import {
 	type ShoppingSyncResult,
 	syncShoppingList,
@@ -19,9 +25,11 @@ export interface ShoppingSyncOptions {
 
 const WATCH_DEBOUNCE_MS = 200;
 
-export async function runShoppingSync(
-	options: ShoppingSyncOptions,
-): Promise<void> {
+export const runShoppingSync = createCommandRunner(
+	async (
+		options: ShoppingSyncOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -29,6 +37,7 @@ export async function runShoppingSync(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const todosPath = config.vault.todosFolder;
 	const shoppingListPath = path.join(config.vault.path, "Shopping List.md");
 
@@ -41,13 +50,7 @@ export async function runShoppingSync(
 		output(buildOutputItems(result), outputOptions);
 	};
 
-	try {
-		await performSync();
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
-		return;
-	}
+	await performSync();
 
 	if (options.watch) {
 		let timer: ReturnType<typeof setTimeout> | undefined;
@@ -76,7 +79,8 @@ export async function runShoppingSync(
 			outputOptions,
 		);
 	}
-}
+},
+);
 
 function buildOutputOptions(config: {
 	output: { format: string; color: boolean; verbose: boolean };
@@ -112,12 +116,4 @@ function buildOutputItems(result: ShoppingSyncResult): OutputItem[] {
 	}
 
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

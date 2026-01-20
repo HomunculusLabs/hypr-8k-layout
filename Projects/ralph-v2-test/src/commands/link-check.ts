@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import {
 	LINK_CHECK_REPORT_FILENAME,
@@ -28,7 +29,8 @@ export interface LinkCheckOptions {
 
 const DEFAULT_OUTPUT_MODE: LinkCheckOutputMode = "console";
 
-export async function runLinkCheck(options: LinkCheckOptions): Promise<void> {
+export const runLinkCheck = createCommandRunner(
+	async (options: LinkCheckOptions, { setOutputOptions }): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -37,35 +39,32 @@ export async function runLinkCheck(options: LinkCheckOptions): Promise<void> {
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(
 		options.outputMode ?? DEFAULT_OUTPUT_MODE,
 	);
 	const reportPath = path.join(config.vault.path, LINK_CHECK_REPORT_FILENAME);
 
-	try {
-		const result = await checkBrokenLinks({
-			vaultPath: config.vault.path,
-			reportPath,
-			outputMode,
-			excludePatterns: normalizeExcludePatterns(options.exclude),
-			suggest: Boolean(options.suggest),
-			createStubs: Boolean(options.createStubs),
-		} satisfies LinkCheckPaths);
+	const result = await checkBrokenLinks({
+		vaultPath: config.vault.path,
+		reportPath,
+		outputMode,
+		excludePatterns: normalizeExcludePatterns(options.exclude),
+		suggest: Boolean(options.suggest),
+		createStubs: Boolean(options.createStubs),
+	} satisfies LinkCheckPaths);
 
-		if (outputMode === "console") {
-			console.log(buildConsoleLines(result).join("\n"));
-			return;
-		}
-
-		const report = buildReport(result);
-		await writeFile(reportPath, report, "utf8");
-
-		output(buildOutputItems(result), outputOptions);
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+	if (outputMode === "console") {
+		console.log(buildConsoleLines(result).join("\n"));
+		return;
 	}
-}
+
+	const report = buildReport(result);
+	await writeFile(reportPath, report, "utf8");
+
+	output(buildOutputItems(result), outputOptions);
+},
+);
 
 export { checkBrokenLinks } from "../lib/link-check";
 
@@ -109,12 +108,4 @@ function buildOutputItems(result: LinkCheckResult): OutputItem[] {
 	}
 
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

@@ -4,6 +4,7 @@ import type { FrontmatterSchema, FrontmatterSchemas } from "../types";
 import { findMarkdownFiles } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
 import { parseWikilinks } from "./markdown/wikilinks";
+import { getCachedRegex } from "./regex-cache";
 import { vaultStatsSchema } from "./schemas";
 
 export type StatsSection =
@@ -871,7 +872,7 @@ function schemaMatches(
 	}
 
 	if (match.filename) {
-		const regex = new RegExp(match.filename);
+		const regex = getCachedRegex(match.filename);
 		if (!regex.test(path.basename(filePath))) {
 			return false;
 		}

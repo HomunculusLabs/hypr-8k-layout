@@ -1,5 +1,6 @@
 import { stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { findMarkdownFiles, readNote, writeNote } from "../lib/markdown/files";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
@@ -79,7 +80,8 @@ const DEFAULT_THRESHOLDS: StaleThresholds = {
 const SEVERITY_MULTIPLIER = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export async function runStaleCheck(options: StaleCheckOptions): Promise<void> {
+export const runStaleCheck = createCommandRunner(
+	async (options: StaleCheckOptions, { setOutputOptions }): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -88,39 +90,32 @@ export async function runStaleCheck(options: StaleCheckOptions): Promise<void> {
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(options.outputMode ?? "report");
 	const todosPath = options.path
 		? resolveTodosPath(config.vault.path, options.path)
 		: config.vault.todosFolder;
 	const reportPath = path.join(config.vault.path, REPORT_FILENAME);
 
-	try {
-		const result = await checkStaleTodos({
-			vaultPath: config.vault.path,
-			todosPath,
-			reportPath,
-			outputMode,
-			thresholds: normalizeThresholds(options),
-			excludePatterns: normalizeExcludePatterns(options.exclude),
-			noWrite: options.noWrite,
-		});
+	const result = await checkStaleTodos({
+		vaultPath: config.vault.path,
+		todosPath,
+		reportPath,
+		outputMode,
+		thresholds: normalizeThresholds(options),
+		excludePatterns: normalizeExcludePatterns(options.exclude),
+		noWrite: options.noWrite,
+	});
 
-		if (outputMode === "console") {
-			const consoleLines = buildConsoleLines(result);
-			console.log(consoleLines.join("\n"));
-			return;
-		}
-
-		output(buildOutputItems(result, outputMode), outputOptions);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown error";
-		output([{ type: "error", message }], {
-			...outputOptions,
-			format: "console",
-		});
-		process.exitCode = 1;
+	if (outputMode === "console") {
+		const consoleLines = buildConsoleLines(result);
+		console.log(consoleLines.join("\n"));
+		return;
 	}
-}
+
+	output(buildOutputItems(result, outputMode), outputOptions);
+},
+);
 
 export async function checkStaleTodos(
 	paths: StaleCheckPaths,

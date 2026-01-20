@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -28,7 +29,8 @@ export interface RalphQueueOptions {
 const QUEUE_FILENAME = "Ralph Queue.md";
 const DEFAULT_MAX_TASKS = 5;
 
-export async function runRalphQueue(options: RalphQueueOptions): Promise<void> {
+export const runRalphQueue = createCommandRunner(
+	async (options: RalphQueueOptions, { setOutputOptions }): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -36,6 +38,7 @@ export async function runRalphQueue(options: RalphQueueOptions): Promise<void> {
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const outputMode = normalizeOutputMode(
 		options.output ?? (options.json ? "json" : "console"),
 		config.output.format,
@@ -43,46 +46,42 @@ export async function runRalphQueue(options: RalphQueueOptions): Promise<void> {
 	const maxTasks = normalizeMaxTasks(options.maxTasks);
 	const timeBudgetHours = parseTimeBudget(options.timeBudget);
 
-	try {
-		const result = await buildRalphQueue({
-			vaultPath: config.vault.path,
-			todosPath: config.vault.todosFolder,
-			projectsPath: config.vault.projectsFolder,
-			maxTasks,
+	const result = await buildRalphQueue({
+		vaultPath: config.vault.path,
+		todosPath: config.vault.todosFolder,
+		projectsPath: config.vault.projectsFolder,
+		maxTasks,
+		timeBudgetHours: timeBudgetHours ?? undefined,
+		projectFilter: options.project,
+		includeLowPriority: options.includeLowPriority ?? false,
+	});
+
+	if (outputMode === "json") {
+		console.log(JSON.stringify(result, null, 2));
+		return;
+	}
+
+	if (outputMode === "queue") {
+		const queuePath = path.join(config.vault.path, QUEUE_FILENAME);
+		const queueText = formatQueueMarkdown(result, {
+			generated: new Date(),
 			timeBudgetHours: timeBudgetHours ?? undefined,
-			projectFilter: options.project,
-			includeLowPriority: options.includeLowPriority ?? false,
-		});
-
-		if (outputMode === "json") {
-			console.log(JSON.stringify(result, null, 2));
-			return;
-		}
-
-		if (outputMode === "queue") {
-			const queuePath = path.join(config.vault.path, QUEUE_FILENAME);
-			const queueText = formatQueueMarkdown(result, {
-				generated: new Date(),
-				timeBudgetHours: timeBudgetHours ?? undefined,
-				explain: options.explain ?? false,
-			});
-			await writeFile(queuePath, queueText, "utf8");
-			output(buildQueueOutputItems(result, queuePath), {
-				...outputOptions,
-				format: "console",
-			});
-			return;
-		}
-
-		const lines = formatQueueConsole(result, {
 			explain: options.explain ?? false,
 		});
-		console.log(lines.join("\n"));
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+		await writeFile(queuePath, queueText, "utf8");
+		output(buildQueueOutputItems(result, queuePath), {
+			...outputOptions,
+			format: "console",
+		});
+		return;
 	}
-}
+
+	const lines = formatQueueConsole(result, {
+		explain: options.explain ?? false,
+	});
+	console.log(lines.join("\n"));
+},
+);
 
 export { buildRalphQueue } from "../lib/ralph-queue";
 
@@ -145,12 +144,4 @@ function buildQueueOutputItems(
 	});
 	items.push({ type: "info", message: `Queue path: ${queuePath}` });
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

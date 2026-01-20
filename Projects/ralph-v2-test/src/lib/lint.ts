@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import { findMarkdownFiles, writeNote } from "./markdown/files";
 import { type ParsedNote, parseNote } from "./markdown/frontmatter";
+import { getCachedRegex } from "./regex-cache";
 
 export type LintOutputMode = "console" | "report" | "json";
 
@@ -176,7 +177,7 @@ function schemaMatches(
 	}
 
 	if (match.filename) {
-		const regex = new RegExp(match.filename);
+		const regex = getCachedRegex(match.filename);
 		if (!regex.test(path.basename(filePath))) {
 			return false;
 		}

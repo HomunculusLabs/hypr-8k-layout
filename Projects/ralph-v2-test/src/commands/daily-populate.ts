@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import {
 	formatDate,
@@ -22,9 +23,11 @@ export interface DailyPopulateOptions {
 
 const DAILY_TEMPLATE_FILE = "daily-notes.md";
 
-export async function runDailyPopulate(
-	options: DailyPopulateOptions,
-): Promise<void> {
+export const runDailyPopulate = createCommandRunner(
+	async (
+		options: DailyPopulateOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -33,6 +36,7 @@ export async function runDailyPopulate(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 	const date = normalizeDateInput(options.date) ?? formatDate(new Date());
 	const dailyPath = config.vault.dailyFolder;
 	const templatePath = path.join(
@@ -43,25 +47,21 @@ export async function runDailyPopulate(
 		(options.skip ?? []).map((value) => value.toLowerCase()),
 	);
 
-	try {
-		const result = await populateDailyNote({
-			vaultPath: config.vault.path,
-			todosPath: config.vault.todosFolder,
-			projectsPath: config.vault.projectsFolder,
-			dailyPath,
-			templatePath,
-			date,
-			create: options.create,
-			dryRun: options.dryRun,
-			skip,
-		});
+	const result = await populateDailyNote({
+		vaultPath: config.vault.path,
+		todosPath: config.vault.todosFolder,
+		projectsPath: config.vault.projectsFolder,
+		dailyPath,
+		templatePath,
+		date,
+		create: options.create,
+		dryRun: options.dryRun,
+		skip,
+	});
 
-		output(buildOutputItems(result), outputOptions);
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
-	}
-}
+	output(buildOutputItems(result), outputOptions);
+},
+);
 
 export { populateDailyNote } from "../lib/daily-populate";
 
@@ -123,12 +123,4 @@ function buildOutputItems(result: {
 	}
 
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }

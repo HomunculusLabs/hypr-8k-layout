@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import {
 	type FrontmatterLintResult,
@@ -26,9 +27,11 @@ export interface FrontmatterLintOptions {
 	dryRun?: boolean;
 }
 
-export async function runFrontmatterLint(
-	options: FrontmatterLintOptions,
-): Promise<void> {
+export const runFrontmatterLint = createCommandRunner(
+	async (
+		options: FrontmatterLintOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -42,6 +45,7 @@ export async function runFrontmatterLint(
 		verbose: config.output.verbose,
 		quiet: false,
 	};
+	setOutputOptions(outputOptions);
 
 	const outputMode = normalizeOutputMode(
 		options.outputMode ?? (options.json ? "json" : "report"),
@@ -52,67 +56,59 @@ export async function runFrontmatterLint(
 	);
 	const reportPath = path.join(config.vault.path, "Frontmatter Lint Report.md");
 
-	try {
-		const result: FrontmatterLintResult = await lintFrontmatter({
-			vaultPath: config.vault.path,
-			rootPath,
-			reportPath,
-			outputMode,
-			fix: Boolean(options.fix),
-			dryRun: Boolean(options.dryRun),
-			schemas: config.schemas ?? {},
-		});
+	const result: FrontmatterLintResult = await lintFrontmatter({
+		vaultPath: config.vault.path,
+		rootPath,
+		reportPath,
+		outputMode,
+		fix: Boolean(options.fix),
+		dryRun: Boolean(options.dryRun),
+		schemas: config.schemas ?? {},
+	});
 
-		if (outputMode === "json") {
-			console.log(JSON.stringify(result, null, 2));
-			if (result.totalErrors > 0) {
-				process.exitCode = 1;
-			}
-			return;
-		}
-
-		if (outputMode === "console") {
-			console.log(buildConsoleLines(result).join("\n"));
-			if (result.totalErrors > 0) {
-				process.exitCode = 1;
-			}
-			return;
-		}
-
-		const report = buildReport(result);
-		await writeFile(reportPath, report, "utf8");
-
-		const items: OutputItem[] = [
-			{
-				type: result.totalErrors > 0 ? "warning" : "success",
-				message:
-					result.totalErrors > 0
-						? "Frontmatter lint report generated"
-						: "No frontmatter issues found",
-				details: buildSummary(result),
-			},
-			{ type: "info", message: `Report path: ${result.reportPath}` },
-		];
-
-		if (result.fixedFiles > 0) {
-			items.push({
-				type: "info",
-				message: `Files updated: ${result.fixedFiles}`,
-			});
-		}
-
-		output(items, outputOptions);
+	if (outputMode === "json") {
+		console.log(JSON.stringify(result, null, 2));
 		if (result.totalErrors > 0) {
 			process.exitCode = 1;
 		}
-	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown error";
-		output([{ type: "error", message }], {
-			...outputOptions,
-			format: "console",
+		return;
+	}
+
+	if (outputMode === "console") {
+		console.log(buildConsoleLines(result).join("\n"));
+		if (result.totalErrors > 0) {
+			process.exitCode = 1;
+		}
+		return;
+	}
+
+	const report = buildReport(result);
+	await writeFile(reportPath, report, "utf8");
+
+	const items: OutputItem[] = [
+		{
+			type: result.totalErrors > 0 ? "warning" : "success",
+			message:
+				result.totalErrors > 0
+					? "Frontmatter lint report generated"
+					: "No frontmatter issues found",
+			details: buildSummary(result),
+		},
+		{ type: "info", message: `Report path: ${result.reportPath}` },
+	];
+
+	if (result.fixedFiles > 0) {
+		items.push({
+			type: "info",
+			message: `Files updated: ${result.fixedFiles}`,
 		});
+	}
+
+	output(items, outputOptions);
+	if (result.totalErrors > 0) {
 		process.exitCode = 1;
 	}
-}
+},
+);
 
 export { lintFrontmatter } from "../lib/lint";

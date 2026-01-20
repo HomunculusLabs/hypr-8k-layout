@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createCommandRunner } from "../lib/command-runner";
 import { loadConfig } from "../lib/config";
 import { type OutputItem, type OutputOptions, output } from "../lib/output";
 import {
@@ -19,9 +20,11 @@ export interface WeeklyRollupOptions {
 	outputPath?: string;
 }
 
-export async function runWeeklyRollup(
-	options: WeeklyRollupOptions,
-): Promise<void> {
+export const runWeeklyRollup = createCommandRunner(
+	async (
+		options: WeeklyRollupOptions,
+		{ setOutputOptions },
+	): Promise<void> => {
 	const config = await loadConfig(options.configPath, {
 		vault: options.vaultPath,
 		verbose: options.verbose,
@@ -30,35 +33,32 @@ export async function runWeeklyRollup(
 	} satisfies CliOverrides);
 
 	const outputOptions = buildOutputOptions(config);
+	setOutputOptions(outputOptions);
 
-	try {
-		const range = resolveWeeklyRollupRange({
-			week: options.week,
-			start: options.start,
-			end: options.end,
-		});
-		const outputPath = resolveOutputPath(options.outputPath, config.vault.path);
+	const range = resolveWeeklyRollupRange({
+		week: options.week,
+		start: options.start,
+		end: options.end,
+	});
+	const outputPath = resolveOutputPath(options.outputPath, config.vault.path);
 
-		const result = await buildWeeklyRollup({
-			vaultPath: config.vault.path,
-			todosPath: config.vault.todosFolder,
-			dailyPath: config.vault.dailyFolder,
-			outputPath,
-			startDate: range.startDate,
-			endDate: range.endDate,
-		});
+	const result = await buildWeeklyRollup({
+		vaultPath: config.vault.path,
+		todosPath: config.vault.todosFolder,
+		dailyPath: config.vault.dailyFolder,
+		outputPath,
+		startDate: range.startDate,
+		endDate: range.endDate,
+	});
 
-		if (config.output.format === "json") {
-			console.log(JSON.stringify(result, null, 2));
-			return;
-		}
-
-		output(buildOutputItems(result), outputOptions);
-	} catch (error) {
-		reportError(error, outputOptions);
-		process.exitCode = 1;
+	if (config.output.format === "json") {
+		console.log(JSON.stringify(result, null, 2));
+		return;
 	}
-}
+
+	output(buildOutputItems(result), outputOptions);
+},
+);
 
 export { buildWeeklyRollup } from "../lib/weekly-rollup";
 
@@ -102,12 +102,4 @@ function buildOutputItems(result: {
 	});
 
 	return items;
-}
-
-function reportError(error: unknown, outputOptions: OutputOptions): void {
-	const message = error instanceof Error ? error.message : "Unknown error";
-	output([{ type: "error", message }], {
-		...outputOptions,
-		format: "console",
-	});
 }
