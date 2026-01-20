@@ -1,6 +1,7 @@
-import { readdir, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import { coerceBool, coerceDate } from "./coerce";
+import { collectFiles, walkDirectory } from "./fs/walk";
 import { readNote } from "./markdown/files";
 import { parseSections } from "./markdown/sections";
 import { parseWikilinks } from "./markdown/wikilinks";
@@ -261,110 +262,35 @@ async function discoverProjectCandidates(projectsPath: string): Promise<{
 }> {
 	const notes: ProjectCandidateNote[] = [];
 	const plans: ProjectCandidatePlan[] = [];
-	const visited = new Set<string>();
-
-	async function walk(dir: string): Promise<void> {
-		let realDir: string;
-		try {
-			realDir = await Bun.realpath(dir);
-		} catch {
-			realDir = dir;
+	for await (const entry of walkDirectory(projectsPath, {
+		fileFilter: (_, name) => path.extname(name).toLowerCase() === ".md",
+	})) {
+		if (entry.name === PLAN_FILENAME) {
+			plans.push({ path: entry.path, folder: path.dirname(entry.path) });
+			continue;
 		}
-		if (visited.has(realDir)) return;
-		visited.add(realDir);
 
-		const entries = await readdir(dir, { withFileTypes: true });
-		for (const entry of entries) {
-			const entryPath = path.join(dir, entry.name);
-			let statInfo: {
-				isDirectory: () => boolean;
-				isFile: () => boolean;
-			} | null = null;
-			if (entry.isSymbolicLink()) {
-				try {
-					const linked = await stat(entryPath);
-					statInfo = linked;
-				} catch {
-					statInfo = null;
-				}
-			}
-			const isDir = entry.isDirectory() || statInfo?.isDirectory();
-			const isFile = entry.isFile() || statInfo?.isFile();
-
-			if (isDir) {
-				await walk(entryPath);
-				continue;
-			}
-			if (!isFile) continue;
-			if (path.extname(entry.name).toLowerCase() !== ".md") continue;
-
-			if (entry.name === PLAN_FILENAME) {
-				plans.push({ path: entryPath, folder: path.dirname(entryPath) });
-				continue;
-			}
-
-			notes.push({ path: entryPath, folder: path.dirname(entryPath) });
-		}
+		notes.push({ path: entry.path, folder: path.dirname(entry.path) });
 	}
-
-	await walk(projectsPath);
 	return { notes, plans };
 }
 
 async function buildNoteIndex(rootPath: string): Promise<NoteIndex> {
-	const files: string[] = [];
-	const visited = new Set<string>();
-
-	async function walk(dir: string): Promise<void> {
-		let realDir: string;
-		try {
-			realDir = await Bun.realpath(dir);
-		} catch {
-			realDir = dir;
-		}
-		if (visited.has(realDir)) return;
-		visited.add(realDir);
-
-		const entries = await readdir(dir, { withFileTypes: true });
-		for (const entry of entries) {
-			const entryPath = path.join(dir, entry.name);
-			let statInfo: {
-				isDirectory: () => boolean;
-				isFile: () => boolean;
-			} | null = null;
-			if (entry.isSymbolicLink()) {
-				try {
-					const linked = await stat(entryPath);
-					statInfo = linked;
-				} catch {
-					statInfo = null;
-				}
-			}
-			const isDir = entry.isDirectory() || statInfo?.isDirectory();
-			const isFile = entry.isFile() || statInfo?.isFile();
-			if (isDir) {
-				await walk(entryPath);
-				continue;
-			}
-			if (!isFile) continue;
-			if (path.extname(entry.name).toLowerCase() !== ".md") continue;
-			files.push(entryPath);
-		}
-	}
-
-	await walk(rootPath);
+	const files = await collectFiles(rootPath, {
+		fileFilter: (_, name) => path.extname(name).toLowerCase() === ".md",
+	});
 	const byName = new Map<string, string>();
 	const byRelative = new Map<string, string>();
-	for (const file of files) {
-		const name = path.basename(file, ".md").toLowerCase();
+	for (const entry of files) {
+		const name = path.basename(entry.path, ".md").toLowerCase();
 		if (!byName.has(name)) {
-			byName.set(name, file);
+			byName.set(name, entry.path);
 		}
 		const relative = path
-			.relative(rootPath, file)
+			.relative(rootPath, entry.path)
 			.replace(/\\/g, "/")
 			.toLowerCase();
-		byRelative.set(relative, file);
+		byRelative.set(relative, entry.path);
 	}
 	return { byName, byRelative };
 }

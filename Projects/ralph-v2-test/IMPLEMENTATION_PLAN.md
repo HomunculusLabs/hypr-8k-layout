@@ -57,7 +57,7 @@
 - [x] Review schema validation implementation [021-review-schema-validation.md]
 - [x] Fix type coercion bugs (boolean/date) [015-fix-type-coercion.md]
 - [x] Review type coercion fixes [022-review-type-coercion.md]
-- [ ] Consolidate duplicate directory walkers [016-dry-directory-walker.md]
+- [x] Consolidate duplicate directory walkers [016-dry-directory-walker.md]
 - [ ] Review directory walker consolidation [023-review-directory-walker.md]
 
 ## Priority 7 - Code Review Fixes (Medium Priority)
