@@ -40,7 +40,7 @@
 - [x] Refactor src/lib/ shared utilities [011-refine-lib.md]
 - [x] Refactor config parser [011-refine-lib.md]
 - [x] Refactor shopping-sync command [012-refine-commands.md]
-- [ ] Refactor daily-populate command [012-refine-commands.md]
+- [x] Refactor daily-populate command [012-refine-commands.md]
 - [ ] Refactor template command [012-refine-commands.md]
 - [ ] Refactor stale-check command [012-refine-commands.md]
 - [ ] Refactor link-check command [012-refine-commands.md]
