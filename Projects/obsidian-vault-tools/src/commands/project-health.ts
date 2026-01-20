@@ -44,10 +44,9 @@ export const runProjectHealth = createCommandRunner(
 	);
 	const adapter = createBunAdapter(config.vault.path);
 
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath: config.vault.projectsFolder,
-		todosPath: config.vault.todosFolder,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: config.vault.projectsFolder,
+		todosFolder: config.vault.todosFolder,
 		statusFilter: options.status,
 		sort: options.sort,
 	});

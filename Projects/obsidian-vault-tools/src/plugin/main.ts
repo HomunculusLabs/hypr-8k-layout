@@ -5,15 +5,18 @@ import { createObsidianAdapter, type VaultAdapter } from '../lib/adapters';
 import { populateDailyNote } from '../lib/daily-populate';
 import { checkBrokenLinks } from '../lib/link-check';
 import { lintFrontmatter } from '../lib/lint';
+import { buildProjectHealth } from '../lib/project-health';
 import { buildRalphQueue } from '../lib/ralph-queue';
 import { vaultToolsConfigSchema } from '../lib/schemas';
 import { syncShoppingList } from '../lib/shopping-sync';
 import { checkStaleTodos } from '../lib/stale-check';
 import { buildVaultStats } from '../lib/stats';
+import { createFromTemplateFile, listTemplates } from '../lib/template';
 import { generateWeeklyRollup } from '../lib/weekly-rollup';
 import type { FrontmatterSchemas } from '../types';
 import { DEFAULT_SETTINGS, type VaultToolsSettings, VaultToolsSettingTab } from './settings';
 import { VaultToolsSidebarView, VIEW_TYPE_VAULT_TOOLS } from './sidebar-view';
+import { TemplatePickerModal } from './template-modal';
 
 export interface QuickStats {
   noteCount: number;
@@ -65,6 +68,22 @@ export default class VaultToolsPlugin extends Plugin {
       name: 'Generate weekly rollup',
       callback: () => {
         void this.runWeeklyRollup();
+      },
+    });
+
+    this.addCommand({
+      id: 'show-project-health',
+      name: 'Show project health',
+      callback: () => {
+        this.runProjectHealth();
+      },
+    });
+
+    this.addCommand({
+      id: 'create-from-template',
+      name: 'Create from template',
+      callback: () => {
+        void this.runTemplateCreate();
       },
     });
   }
@@ -220,7 +239,26 @@ export default class VaultToolsPlugin extends Plugin {
   }
 
   runProjectHealth(): void {
-    this.showPlaceholderOutput('Project Health');
+    const view = this.getSidebarView();
+    if (!view) {
+      new Notice('Vault Tools: open the sidebar to run Project Health.');
+      return;
+    }
+
+    view.showOutput('Loading project health...');
+    void (async () => {
+      try {
+        const result = await buildProjectHealth(this.adapter, {
+          projectsFolder: this.settings.projectsFolder,
+          todosFolder: this.settings.todosFolder,
+        });
+        view.showProjectHealth(result);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to run project health.';
+        view.showOutput(`Error: ${message}`);
+      }
+    })();
   }
 
   async runDailyPopulate(): Promise<void> {
@@ -311,6 +349,41 @@ export default class VaultToolsPlugin extends Plugin {
     })();
   }
 
+  async runTemplateCreate(): Promise<void> {
+    try {
+      const result = await listTemplates(this.adapter, this.settings.templatesFolder);
+      if (result.templates.length === 0) {
+        new Notice('No templates found.');
+        return;
+      }
+
+      new TemplatePickerModal(
+        this.app,
+        result.templates,
+        async (template, title, variables) => {
+          try {
+            const outputFolder = this.resolveOutputFolder(template.defaultOutput);
+            const outputPath = await createFromTemplateFile(this.adapter, {
+              templatePath: template.path,
+              title,
+              outputFolder,
+              variables,
+            });
+            await this.app.workspace.openLinkText(outputPath, '');
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : 'Unable to create note.';
+            new Notice(message);
+          }
+        },
+      ).open();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to load templates.';
+      new Notice(message);
+    }
+  }
+
   private showPlaceholderOutput(actionName: string): void {
     const view = this.getSidebarView();
     if (view) {
@@ -318,6 +391,21 @@ export default class VaultToolsPlugin extends Plugin {
       return;
     }
     new Notice(`Vault Tools: open the sidebar to run ${actionName}.`);
+  }
+
+  private resolveOutputFolder(defaultOutput?: string): string {
+    if (!defaultOutput) return '';
+    const trimmed = defaultOutput.trim();
+    if (!trimmed) return '';
+    if (this.isDirectoryPath(trimmed)) {
+      return trimmed.replace(/[\\/]+$/, '');
+    }
+    return path.dirname(trimmed);
+  }
+
+  private isDirectoryPath(candidate: string): boolean {
+    if (candidate.endsWith(path.sep) || candidate.endsWith('/')) return true;
+    return path.extname(candidate) === '';
   }
 
   private getSidebarView(): VaultToolsSidebarView | null {

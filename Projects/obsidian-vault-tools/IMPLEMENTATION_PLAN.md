@@ -128,7 +128,7 @@
 - [x] Port analysis commands (stats, link-check, lint) [066-port-analysis-commands.md]
 - [x] Port todo commands (stale-check, ralph-queue, shopping-sync) [067-port-todo-commands.md]
 - [x] Port daily commands (daily-populate, weekly-rollup) [068-port-daily-commands.md]
-- [ ] Port project commands (project-health with fix, template) [069-port-project-commands.md]
+- [x] Port project commands (project-health with fix, template) [069-port-project-commands.md]
 - [ ] Plugin polish (icons, styling, error handling) [070-plugin-polish.md]
 
 ---

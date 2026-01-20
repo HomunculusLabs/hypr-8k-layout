@@ -9,6 +9,8 @@ export interface TemplateInfo {
 	name: string;
 	path: string;
 	defaultOutput?: string;
+	description?: string;
+	variables?: string[];
 }
 
 export interface TemplateListResult {
@@ -56,11 +58,18 @@ export async function listTemplates(
 		const note = parseNote(content);
 		const metadata = parseTemplateMetadata(note.frontmatter);
 		const key = toTemplateKey(templatesPath, filePath);
+		const description =
+			typeof note.frontmatter.description === "string"
+				? note.frontmatter.description.trim()
+				: undefined;
+		const variables = extractTemplateVariables(content, metadata);
 		templates.push({
 			key,
 			name: metadata.templateName ?? key,
 			path: filePath,
 			defaultOutput: metadata.defaultOutput,
+			description,
+			variables,
 		});
 	}
 
@@ -223,6 +232,42 @@ export async function createFromTemplate(options: {
 	};
 }
 
+export async function createFromTemplateFile(
+	adapter: VaultAdapter,
+	options: {
+		templatePath: string;
+		title: string;
+		outputFolder: string;
+		variables?: Record<string, string>;
+		now?: Date;
+	},
+): Promise<string> {
+	const templateContent = await adapter.readFile(options.templatePath);
+	const parsed = parseNote(templateContent);
+	const metadata = parseTemplateMetadata(parsed.frontmatter);
+	const cleanedFrontmatter = stripTemplateMetadata(parsed.frontmatter);
+
+	const now = options.now ?? new Date();
+	const context: TemplateCreateContext = {
+		title: options.title,
+		vars: options.variables ?? {},
+		now,
+	};
+
+	const serialized = serializeNote({
+		frontmatter: cleanedFrontmatter,
+		content: parsed.content,
+	});
+	const substituted = applyTemplateVariables(serialized, context);
+	const outputPath = path.join(
+		options.outputFolder,
+		`${sanitizeFilename(options.title)}.md`,
+	);
+
+	await adapter.createFile(outputPath, substituted);
+	return outputPath;
+}
+
 function parseTemplateMetadata(
 	frontmatter: Record<string, unknown>,
 ): TemplateMetadata {
@@ -262,6 +307,22 @@ function parseTemplateMetadata(
 		}
 	}
 	return metadata;
+}
+
+function extractTemplateVariables(
+	content: string,
+	metadata: TemplateMetadata,
+): string[] {
+	const variables = new Set<string>();
+	for (const variable of metadata.variables) {
+		if (variable.name) variables.add(variable.name);
+	}
+	for (const field of collectInputFields(content)) {
+		variables.add(field);
+	}
+	variables.delete("title");
+	variables.delete("date");
+	return Array.from(variables).sort((a, b) => a.localeCompare(b));
 }
 
 function stripTemplateMetadata(

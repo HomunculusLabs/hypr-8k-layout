@@ -90,10 +90,9 @@ status: active
 	);
 
 	const adapter = createBunAdapter(vaultPath);
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath,
-		todosPath,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: projectsPath,
+		todosFolder: todosPath,
 		now: new Date(2026, 0, 19),
 	});
 
@@ -137,10 +136,9 @@ status: active
 	);
 
 	const adapter = createBunAdapter(vaultPath);
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath,
-		todosPath,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: projectsPath,
+		todosFolder: todosPath,
 		statusFilter: "archived",
 		now: new Date(2026, 0, 19),
 	});
@@ -164,10 +162,9 @@ status: active
 	await symlink(realNotePath, path.join(projectsPath, "Linked.md"));
 
 	const adapter = createBunAdapter(vaultPath);
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath,
-		todosPath,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: projectsPath,
+		todosFolder: todosPath,
 		now: new Date(2026, 0, 19),
 	});
 
@@ -181,10 +178,9 @@ test("handles circular symlinks without hanging", async () => {
 	await symlink(loopDir, path.join(loopDir, "loop"));
 
 	const adapter = createBunAdapter(vaultPath);
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath,
-		todosPath,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: projectsPath,
+		todosFolder: todosPath,
 		now: new Date(2026, 0, 19),
 	});
 
@@ -196,10 +192,9 @@ test("skips broken symlinks gracefully", async () => {
 	await symlink("/nonexistent/path.md", path.join(projectsPath, "Broken.md"));
 
 	const adapter = createBunAdapter(vaultPath);
-	const result = await buildProjectHealth({
-		adapter,
-		projectsPath,
-		todosPath,
+	const result = await buildProjectHealth(adapter, {
+		projectsFolder: projectsPath,
+		todosFolder: todosPath,
 		now: new Date(2026, 0, 19),
 	});
 

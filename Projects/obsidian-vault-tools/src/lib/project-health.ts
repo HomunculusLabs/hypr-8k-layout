@@ -6,10 +6,9 @@ import { readNote } from "./markdown/files";
 import { parseSections } from "./markdown/sections";
 import { parseWikilinks } from "./markdown/wikilinks";
 
-export interface ProjectHealthPaths {
-	adapter: VaultAdapter;
-	projectsPath: string;
-	todosPath: string;
+export interface ProjectHealthOptions {
+	projectsFolder: string;
+	todosFolder: string;
 	statusFilter?: string;
 	sort?: string;
 	now?: Date;
@@ -83,23 +82,24 @@ const PLAN_FILENAME = "IMPLEMENTATION_PLAN.md";
 const DASHBOARD_TITLE = "Projects Health Dashboard";
 
 export async function buildProjectHealth(
-	paths: ProjectHealthPaths,
+	adapter: VaultAdapter,
+	options: ProjectHealthOptions,
 ): Promise<ProjectHealthResult> {
-	const now = paths.now ?? new Date();
+	const now = options.now ?? new Date();
 	const { notes, plans } = await discoverProjectCandidates(
-		paths.adapter,
-		paths.projectsPath,
+		adapter,
+		options.projectsFolder,
 	);
 	const planByFolder = new Map<string, ProjectCandidatePlan>();
 	for (const plan of plans) {
 		planByFolder.set(plan.folder, plan);
 	}
-	const todoIndex = await buildNoteIndex(paths.adapter, paths.todosPath);
+	const todoIndex = await buildNoteIndex(adapter, options.todosFolder);
 	const projects: ProjectHealthProject[] = [];
 
 	for (const note of notes) {
-		const parsed = await readNote(paths.adapter, note.path);
-		const fileStats = await paths.adapter.getFileStats(note.path);
+		const parsed = await readNote(adapter, note.path);
+		const fileStats = await adapter.getFileStats(note.path);
 		const status = resolveStatus(parsed.frontmatter);
 		const name = resolveProjectName(note.path, parsed.frontmatter);
 		const lastTouched = resolveLastTouched(parsed.frontmatter, fileStats);
@@ -113,7 +113,7 @@ export async function buildProjectHealth(
 		const incomePotential = resolveIncomePotential(parsed.frontmatter);
 
 		const linkedTodos = await analyzeLinkedTodos(
-			paths.adapter,
+			adapter,
 			parsed.content,
 			todoIndex,
 		);
@@ -125,7 +125,7 @@ export async function buildProjectHealth(
 		const plan = planByFolder.get(note.folder);
 		if (plan) {
 			const planOpenTasks = await countOpenTasksInPlan(
-				paths.adapter,
+				adapter,
 				plan.path,
 			);
 			if (planOpenTasks > 0 || openTasks === null) {
@@ -165,14 +165,14 @@ export async function buildProjectHealth(
 	}
 
 	for (const plan of planByFolder.values()) {
-		const fileStats = await paths.adapter.getFileStats(plan.path);
+		const fileStats = await adapter.getFileStats(plan.path);
 		const name = path.basename(plan.folder);
 		const status = "active";
 		const lastTouched = resolveLastTouched({}, fileStats);
 		const stalenessDays = lastTouched ? daysBetween(now, lastTouched) : null;
 		const lastTouchedLabel = formatLastTouched(lastTouched, stalenessDays);
 		const openTasks = await countOpenTasksInPlan(
-			paths.adapter,
+			adapter,
 			plan.path,
 		);
 		const { score, category, issues } = scoreProject({
@@ -201,8 +201,8 @@ export async function buildProjectHealth(
 		});
 	}
 
-	const filtered = applyStatusFilter(projects, paths.statusFilter);
-	const sorted = sortProjects(filtered, paths.sort);
+	const filtered = applyStatusFilter(projects, options.statusFilter);
+	const sorted = sortProjects(filtered, options.sort);
 	const groups = groupProjects(sorted);
 	const summary = buildSummary(groups, sorted);
 	const recommendations = buildRecommendations(sorted);
@@ -286,6 +286,15 @@ async function discoverProjectCandidates(
 			plans.push({ path: entry.path, folder: path.dirname(entry.path) });
 			continue;
 		}
+
+		const relativePath = path
+			.relative(projectsPath, entry.path)
+			.replace(/\\/g, "/");
+		const depth = relativePath.split("/").length;
+		if (depth > 1) continue;
+
+		const parsed = await readNote(adapter, entry.path);
+		if (!isProjectNote(parsed.frontmatter)) continue;
 
 		notes.push({ path: entry.path, folder: path.dirname(entry.path) });
 	}
@@ -477,6 +486,44 @@ function resolveIncomePotential(frontmatter: Record<string, unknown>): boolean {
 		frontmatter.income_potential ??
 		frontmatter.incomePotential;
 	return coerceBool(value);
+}
+
+function isProjectNote(frontmatter: Record<string, unknown>): boolean {
+	const type = coerceString(frontmatter.type);
+	if (type === "software" || type === "project") return true;
+	if (frontmatter.repo || frontmatter.repo_path) return true;
+
+	const tags = normalizeTags(frontmatter.tags ?? frontmatter.tag);
+	if (tags.has("project")) return true;
+
+	const status =
+		coerceString(frontmatter.status) ??
+		coerceString(frontmatter.state) ??
+		coerceString(frontmatter.project_status);
+	if (status) return true;
+
+	const priority = coerceString(frontmatter.priority);
+	if (priority) return true;
+
+	return false;
+}
+
+function normalizeTags(raw: unknown): Set<string> {
+	const tags = new Set<string>();
+	if (Array.isArray(raw)) {
+		for (const tag of raw) {
+			if (typeof tag === "string") tags.add(tag.toLowerCase());
+		}
+		return tags;
+	}
+	if (typeof raw === "string") {
+		for (const tag of raw.split(/[,\s]+/)) {
+			const trimmed = tag.trim();
+			if (!trimmed) continue;
+			tags.add(trimmed.toLowerCase());
+		}
+	}
+	return tags;
 }
 
 function scoreProject(input: {

@@ -1,6 +1,7 @@
 import { ItemView, type WorkspaceLeaf, setIcon } from 'obsidian';
 import type { LinkCheckResult } from '../lib/link-check';
 import type { FrontmatterLintResult } from '../lib/lint';
+import type { ProjectHealthResult } from '../lib/project-health';
 import type { RalphQueueResult } from '../lib/ralph-queue';
 import type { ShoppingSyncResult } from '../lib/shopping-sync';
 import type { StaleCheckResult } from '../lib/stale-check';
@@ -104,6 +105,11 @@ export class VaultToolsSidebarView extends ItemView {
         name: 'Project Health',
         icon: 'activity',
         action: () => this.plugin.runProjectHealth(),
+      },
+      {
+        name: 'Template Create',
+        icon: 'file-plus',
+        action: () => this.plugin.runTemplateCreate(),
       },
       { name: 'Ralph Queue', icon: 'list-todo', action: () => this.plugin.runRalphQueue() },
       {
@@ -334,6 +340,22 @@ export class VaultToolsSidebarView extends ItemView {
     }
   }
 
+  showProjectHealth(result: ProjectHealthResult): void {
+    if (!this.outputEl) return;
+    this.outputEl.empty();
+
+    const container = this.outputEl.createDiv({ cls: 'vault-tools-output-list' });
+    container.createDiv({
+      cls: 'vault-tools-output-summary',
+      text: `Projects: ${result.summary.total} | Active: ${result.summary.active} | Blocked: ${result.summary.blocked}`,
+    });
+
+    this.renderProjectHealthGroup(container, 'Critical', result.groups.critical);
+    this.renderProjectHealthGroup(container, 'Warning', result.groups.warning);
+    this.renderProjectHealthGroup(container, 'Healthy', result.groups.healthy);
+    this.renderProjectHealthGroup(container, 'Paused', result.groups.paused);
+  }
+
   showShoppingSyncResult(
     result: ShoppingSyncResult,
     shoppingListPath = 'Shopping List.md',
@@ -372,6 +394,53 @@ export class VaultToolsSidebarView extends ItemView {
 
   private formatNumber(value: number): string {
     return value.toLocaleString();
+  }
+
+  private renderProjectHealthGroup(
+    container: HTMLElement,
+    title: string,
+    projects: ProjectHealthResult['projects'],
+  ): void {
+    const group = container.createDiv({ cls: 'vault-tools-output-group' });
+    group.createEl('div', {
+      cls: 'vault-tools-output-summary',
+      text: `${title} (${projects.length})`,
+    });
+
+    if (projects.length === 0) {
+      group.createDiv({
+        cls: 'vault-tools-output-detail',
+        text: 'None.',
+      });
+      return;
+    }
+
+    for (const project of projects) {
+      const row = group.createDiv({ cls: 'vault-tools-output-row' });
+      if (project.path) {
+        const link = row.createEl('button', {
+          cls: 'vault-tools-link',
+          text: project.name,
+        });
+        link.addEventListener('click', () => {
+          void this.plugin.openNote(project.path as string);
+        });
+      } else {
+        row.createDiv({ text: project.name });
+      }
+
+      row.createDiv({
+        cls: 'vault-tools-output-detail',
+        text: `Status: ${project.status} | Score: ${project.healthScore} | Last touched: ${project.lastTouchedLabel}`,
+      });
+
+      if (project.issues.length > 0) {
+        row.createDiv({
+          cls: 'vault-tools-output-detail',
+          text: `Issues: ${project.issues.join(', ')}`,
+        });
+      }
+    }
   }
 
   private groupBySource(
