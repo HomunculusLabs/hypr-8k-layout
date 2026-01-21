@@ -290,3 +290,33 @@
   cursor: not-allowed;
 }
 
+/* Typing indicator */
+.vault-chat-typing {
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Context indicator */
+.vault-chat-context {
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.85em;
+}
+
+.vault-chat-context-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vault-chat-context-file {
+  color: var(--text-accent);
+}
+
+.vault-chat-context-filename {
+  font-weight: 500;
+}
+

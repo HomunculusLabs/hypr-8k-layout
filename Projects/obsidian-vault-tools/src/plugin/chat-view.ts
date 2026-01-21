@@ -18,6 +18,8 @@ export class VaultChatView extends ItemView {
 	private inputEl: HTMLTextAreaElement | null = null;
 	private messagesEl: HTMLElement | null = null;
 	private sendBtnEl: HTMLButtonElement | null = null;
+	private contextEnabled: boolean = true;
+	private contextIndicatorEl: HTMLElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: VaultToolsPlugin) {
 		super(leaf);
@@ -86,6 +88,17 @@ export class VaultChatView extends ItemView {
 		const header = container.createDiv({ cls: 'vault-chat-header' });
 		header.createEl('h4', { text: 'Vault Chat' });
 
+		// Context indicator (after header)
+		this.contextIndicatorEl = container.createDiv({ cls: 'vault-chat-context' });
+		this.updateContextIndicator();
+
+		// Listen for active file changes
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', () => {
+				this.updateContextIndicator();
+			})
+		);
+
 		// Messages area
 		this.messagesEl = container.createDiv({ cls: 'vault-chat-messages' });
 		this.renderMessages();
@@ -120,7 +133,10 @@ export class VaultChatView extends ItemView {
 			const msgEl = this.messagesEl.createDiv({
 				cls: `vault-chat-message vault-chat-message-${msg.role}`,
 			});
-			msgEl.createDiv({ cls: 'vault-chat-message-content', text: msg.content });
+			const contentEl = msgEl.createDiv({
+				cls: 'vault-chat-message-content',
+			});
+			contentEl.textContent = msg.content;
 		}
 
 		// Scroll to bottom
@@ -128,10 +144,21 @@ export class VaultChatView extends ItemView {
 	}
 
 	private async sendMessage(): Promise<void> {
-		if (!this.inputEl || !this.elizaClient) return;
+		if (!this.inputEl) return;
 
 		const content = this.inputEl.value.trim();
 		if (!content) return;
+
+		// Check if client is initialized
+		if (!this.elizaClient) {
+			this.messages.push({
+				role: 'system',
+				content: 'Please configure Eliza API key in settings.',
+				timestamp: new Date(),
+			});
+			this.renderMessages();
+			return;
+		}
 
 		// Disable input while sending
 		if (this.inputEl) this.inputEl.disabled = true;
@@ -146,30 +173,80 @@ export class VaultChatView extends ItemView {
 		this.inputEl.value = '';
 		this.renderMessages();
 
+		// Add placeholder for assistant response
+		const assistantMsg: ChatMessage = {
+			role: 'assistant',
+			content: '',
+			timestamp: new Date(),
+		};
+		this.messages.push(assistantMsg);
+
+		// Show typing indicator
+		this.showTypingIndicator();
+
 		try {
+			// Inject context
+			const contextPrefix = await this.getContextPrefix();
+			const messageWithContext = contextPrefix + content;
+
 			const { elizaCharacterId } = this.plugin.settings;
-			const response = await this.elizaClient.chat.sendMessage({
-				characterId: elizaCharacterId,
-				message: content,
-				conversationId: this.conversationId ?? undefined,
-			});
 
-			// Store conversation ID for continuity
-			this.conversationId = response.conversationId;
-
-			// Add assistant message
-			this.messages.push({
-				role: 'assistant',
-				content: response.content,
-				timestamp: new Date(),
-			});
-			this.renderMessages();
+			await this.elizaClient.chat.sendMessageStream(
+				{
+					characterId: elizaCharacterId,
+					message: messageWithContext,
+					conversationId: this.conversationId ?? undefined,
+				},
+				{
+					onToken: (token: string) => {
+						assistantMsg.content += token;
+						this.updateLastMessage(assistantMsg.content);
+					},
+					onComplete: (response) => {
+						this.conversationId = response.conversationId;
+						this.hideTypingIndicator();
+						this.renderMessages();
+					},
+					onError: (error) => {
+						this.hideTypingIndicator();
+						let errorMessage = 'Unknown error';
+						if (error instanceof Error) {
+							if (error.message.includes('401')) {
+								errorMessage = 'Invalid API key. Check settings.';
+							} else if (error.message.includes('404')) {
+								errorMessage = 'Character not found. Check character ID.';
+							} else if (error.message.includes('network')) {
+								errorMessage = 'Network error. Check your connection.';
+							} else {
+								errorMessage = error.message;
+							}
+						}
+						this.messages.push({
+							role: 'system',
+							content: `Error: ${errorMessage}`,
+							timestamp: new Date(),
+						});
+						this.renderMessages();
+					},
+				}
+			);
 		} catch (error) {
-			const errorMsg =
-				error instanceof Error ? error.message : 'Unknown error';
+			this.hideTypingIndicator();
+			let errorMessage = 'Unknown error';
+			if (error instanceof Error) {
+				if (error.message.includes('401')) {
+					errorMessage = 'Invalid API key. Check settings.';
+				} else if (error.message.includes('404')) {
+					errorMessage = 'Character not found. Check character ID.';
+				} else if (error.message.includes('network')) {
+					errorMessage = 'Network error. Check your connection.';
+				} else {
+					errorMessage = error.message;
+				}
+			}
 			this.messages.push({
 				role: 'system',
-				content: `Error: ${errorMsg}`,
+				content: `Error: ${errorMessage}`,
 				timestamp: new Date(),
 			});
 			this.renderMessages();
@@ -178,6 +255,83 @@ export class VaultChatView extends ItemView {
 			if (this.inputEl) this.inputEl.disabled = false;
 			if (this.sendBtnEl) this.sendBtnEl.disabled = false;
 			if (this.inputEl) this.inputEl.focus();
+		}
+	}
+
+	private updateContextIndicator(): void {
+		if (!this.contextIndicatorEl) return;
+		this.contextIndicatorEl.empty();
+
+		const activeFile = this.app.workspace.getActiveFile();
+
+		// Context toggle
+		const toggleEl = this.contextIndicatorEl.createDiv({
+			cls: 'vault-chat-context-toggle',
+		});
+		const checkbox = toggleEl.createEl('input', { type: 'checkbox' });
+		checkbox.checked = this.contextEnabled;
+		checkbox.onchange = () => {
+			this.contextEnabled = checkbox.checked;
+			this.updateContextIndicator();
+		};
+		toggleEl.createSpan({ text: 'Include context' });
+
+		// Current file indicator
+		if (this.contextEnabled && activeFile) {
+			const fileEl = this.contextIndicatorEl.createDiv({
+				cls: 'vault-chat-context-file',
+			});
+			fileEl.createSpan({ text: '📎 ' });
+			fileEl.createSpan({
+				text: activeFile.basename,
+				cls: 'vault-chat-context-filename',
+			});
+		}
+	}
+
+	private async getContextPrefix(): Promise<string> {
+		if (!this.contextEnabled) return '';
+
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) return '';
+
+		try {
+			const content = await this.app.vault.read(activeFile);
+			const snippet = content.slice(0, 500); // First 500 chars
+
+			return `[Context: Currently viewing "${activeFile.path}"]\n${snippet}\n\n`;
+		} catch {
+			return `[Context: Currently viewing "${activeFile.path}"]\n\n`;
+		}
+	}
+
+	private showTypingIndicator(): void {
+		if (!this.messagesEl) return;
+		const indicator = this.messagesEl.createDiv({ cls: 'vault-chat-typing' });
+		indicator.setText('...');
+	}
+
+	private hideTypingIndicator(): void {
+		const indicator = this.messagesEl?.querySelector('.vault-chat-typing');
+		indicator?.remove();
+	}
+
+	private updateLastMessage(content: string): void {
+		const lastMsgEl = this.messagesEl?.lastElementChild;
+		if (
+			lastMsgEl?.classList.contains('vault-chat-message-assistant') ||
+			lastMsgEl?.classList.contains('vault-chat-typing')
+		) {
+			const contentEl = lastMsgEl.querySelector('.vault-chat-message-content');
+			if (contentEl) {
+				contentEl.textContent = content;
+			} else {
+				// Create content element if it doesn't exist (when replacing typing indicator)
+				lastMsgEl.createDiv({
+					cls: 'vault-chat-message-content',
+					text: content,
+				});
+			}
 		}
 	}
 }

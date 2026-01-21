@@ -134,7 +134,7 @@
 ## Priority 14 - Eliza Chat Integration
 
 - [x] Chat view + Eliza API integration [071-eliza-chat-view.md]
-- [ ] Streaming responses + vault context injection [072-eliza-streaming-context.md]
+- [x] Streaming responses + vault context injection [072-eliza-streaming-context.md]
 - [ ] Conversation history logging to vault [073-eliza-conversation-history.md]
 - [ ] Wikilink rendering + note picker [074-eliza-note-linking.md]
 - [ ] Action system (navigate, create, edit, search) [075-eliza-action-system.md]
