@@ -228,11 +228,13 @@
 }
 
 .vault-chat-message-system {
-  background: var(--background-modifier-error);
-  font-size: 0.85em;
-  text-align: center;
+  background: var(--background-secondary-alt);
+  border-left: 3px solid var(--text-accent);
+  font-size: 0.9em;
+  color: var(--text-muted);
   align-self: center;
-  color: var(--text-error);
+  max-width: 90%;
+  white-space: pre-wrap;
 }
 
 .vault-chat-message-content {

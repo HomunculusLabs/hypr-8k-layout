@@ -11,6 +11,11 @@ interface ChatMessage {
 	timestamp: Date;
 }
 
+interface ParsedAction {
+	type: string;
+	params: Record<string, any>;
+}
+
 export class VaultChatView extends ItemView {
 	plugin: VaultToolsPlugin;
 	private elizaClient: ElizaClient | null = null;
@@ -88,6 +93,190 @@ export class VaultChatView extends ItemView {
 			content: message,
 			timestamp: new Date(),
 		});
+	}
+
+	private parseActions(content: string): { cleanContent: string; actions: ParsedAction[] } {
+		const actionRegex = /\[ACTION:(\w+):(\{[^}]*\})\]/g;
+		const actions: ParsedAction[] = [];
+
+		let cleanContent = content;
+		let match;
+
+		while ((match = actionRegex.exec(content)) !== null) {
+			try {
+				const action: ParsedAction = {
+					type: match[1],
+					params: JSON.parse(match[2]),
+				};
+				actions.push(action);
+
+				// Remove action from displayed content
+				cleanContent = cleanContent.replace(match[0], '');
+			} catch (e) {
+				console.error('Failed to parse action:', match[0], e);
+			}
+		}
+
+		return { cleanContent: cleanContent.trim(), actions };
+	}
+
+	private async executeActions(actions: ParsedAction[]): Promise<void> {
+		for (const action of actions) {
+			try {
+				await this.executeAction(action);
+			} catch (error) {
+				this.addSystemMessage(
+					`Failed to execute ${action.type}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				);
+			}
+		}
+	}
+
+	private async executeAction(action: ParsedAction): Promise<void> {
+		switch (action.type) {
+			case 'navigate':
+				await this.actionNavigate(action.params as { path: string });
+				break;
+			case 'create':
+				await this.actionCreate(action.params as { path: string; content?: string; template?: string });
+				break;
+			case 'edit':
+				await this.actionEdit(action.params as { path: string; content?: string; append?: string; prepend?: string });
+				break;
+			case 'search':
+				await this.actionSearch(action.params as { query: string });
+				break;
+			default:
+				console.warn('Unknown action type:', action.type);
+		}
+	}
+
+	private addSystemMessage(content: string): void {
+		this.messages.push({
+			role: 'system',
+			content,
+			timestamp: new Date(),
+		});
+		this.renderMessages();
+	}
+
+	private async actionNavigate(params: { path: string }): Promise<void> {
+		const { path } = params;
+
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (file) {
+			await this.app.workspace.openLinkText(path, '', false);
+			this.addSystemMessage(`Opened: ${path}`);
+			return;
+		}
+
+		// Try fuzzy match
+		const files = this.app.vault.getMarkdownFiles();
+		const match = files.find((f) => f.path.toLowerCase().includes(path.toLowerCase()));
+		if (match) {
+			await this.app.workspace.openLinkText(match.path, '', false);
+			this.addSystemMessage(`Opened: ${match.path}`);
+			return;
+		}
+
+		this.addSystemMessage(`File not found: ${path}`);
+	}
+
+	private async actionCreate(params: {
+		path: string;
+		content?: string;
+		template?: string;
+	}): Promise<void> {
+		const { path, content = '', template } = params;
+
+		// Check if file exists
+		if (this.app.vault.getAbstractFileByPath(path)) {
+			this.addSystemMessage(`File already exists: ${path}`);
+			return;
+		}
+
+		// Ensure parent folder exists
+		const folderPath = path.split('/').slice(0, -1).join('/');
+		if (folderPath && !this.app.vault.getAbstractFileByPath(folderPath)) {
+			await this.app.vault.createFolder(folderPath);
+		}
+
+		let fileContent = content;
+
+		// Apply template if specified
+		if (template) {
+			const templatePath = `${this.plugin.settings.templatesFolder}/${template}.md`;
+			const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+			if (templateFile && 'extension' in templateFile) {
+				fileContent = await this.app.vault.read(templateFile as TFile);
+			}
+		}
+
+		await this.app.vault.create(path, fileContent);
+		this.addSystemMessage(`Created: ${path}`);
+
+		// Open the new file
+		await this.app.workspace.openLinkText(path, '', false);
+	}
+
+	private async actionEdit(params: {
+		path: string;
+		content?: string;
+		append?: string;
+		prepend?: string;
+	}): Promise<void> {
+		const { path, content, append, prepend } = params;
+
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!file || !('extension' in file)) {
+			this.addSystemMessage(`File not found: ${path}`);
+			return;
+		}
+
+		const tFile = file as TFile;
+		let currentContent = await this.app.vault.read(tFile);
+
+		if (content !== undefined) {
+			// Replace entire content
+			currentContent = content;
+		}
+		if (append) {
+			currentContent = currentContent + '\n' + append;
+		}
+		if (prepend) {
+			currentContent = prepend + '\n' + currentContent;
+		}
+
+		await this.app.vault.modify(tFile, currentContent);
+		this.addSystemMessage(`Modified: ${path}`);
+	}
+
+	private async actionSearch(params: { query: string }): Promise<void> {
+		const { query } = params;
+
+		const files = this.app.vault.getMarkdownFiles();
+		const results: string[] = [];
+
+		for (const file of files) {
+			if (file.basename.toLowerCase().includes(query.toLowerCase())) {
+				results.push(file.path);
+			} else {
+				// Search content
+				const cachedContent = await this.app.vault.cachedRead(file);
+				if (cachedContent.toLowerCase().includes(query.toLowerCase())) {
+					results.push(file.path);
+				}
+			}
+
+			if (results.length >= 10) break; // Limit results
+		}
+
+		if (results.length > 0) {
+			const resultsList = results.map((r) => `• [[${r}]]`).join('\n');
+			this.addSystemMessage(`Found ${results.length} results for "${query}":\n${resultsList}`);
+		} else {
+			this.addSystemMessage(`No results found for "${query}"`);
+		}
 	}
 
 	private async saveConversation(): Promise<void> {
@@ -324,7 +513,19 @@ tags: [chat-log, eliza]
 					onComplete: async (response) => {
 						this.conversationId = response.conversationId;
 						this.hideTypingIndicator();
+
+						// Parse and execute actions
+						const { cleanContent, actions } = this.parseActions(response.content);
+
+						// Update message with clean content (actions removed)
+						assistantMsg.content = cleanContent;
 						this.renderMessages();
+
+						// Execute actions
+						if (actions.length > 0) {
+							await this.executeActions(actions);
+						}
+
 						// Auto-save conversation after receiving response
 						await this.saveConversation();
 					},

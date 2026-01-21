@@ -137,7 +137,7 @@
 - [x] Streaming responses + vault context injection [072-eliza-streaming-context.md]
 - [x] Conversation history logging to vault [073-eliza-conversation-history.md]
 - [x] Wikilink rendering + note picker [074-eliza-note-linking.md]
-- [ ] Action system (navigate, create, edit, search) [075-eliza-action-system.md]
+- [x] Action system (navigate, create, edit, search) [075-eliza-action-system.md]
 - [ ] Vault tools bridge (agent can run tools) [076-eliza-vault-tools-integration.md]
 
 ---
