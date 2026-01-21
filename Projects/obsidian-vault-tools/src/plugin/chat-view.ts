@@ -1,6 +1,7 @@
-import { ItemView, TFile, type WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, TFile, type WorkspaceLeaf, setIcon, Notice } from 'obsidian';
 import { ElizaClient } from '@eliza/sdk';
 import type VaultToolsPlugin from './main';
+import { NotePickerModal } from './note-picker-modal';
 
 export const VIEW_TYPE_VAULT_CHAT = 'vault-chat-view';
 
@@ -25,6 +26,9 @@ export class VaultChatView extends ItemView {
 	private currentConversationFile: string | null = null;
 	private historyPanelEl: HTMLElement | null = null;
 	private showHistoryPanel: boolean = false;
+
+	// Wikilink autocomplete
+	private autoCompleteEl: HTMLElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: VaultToolsPlugin) {
 		super(leaf);
@@ -198,12 +202,26 @@ tags: [chat-log, eliza]
 
 		// Input area
 		const inputArea = container.createDiv({ cls: 'vault-chat-input-area' });
-		this.inputEl = inputArea.createEl('textarea', {
+
+		// Action buttons row
+		const actionsRow = inputArea.createDiv({ cls: 'vault-chat-actions' });
+
+		// Insert note button
+		const insertNoteBtn = actionsRow.createEl('button', {
+			cls: 'vault-chat-insert-note-btn',
+			text: '+ Note',
+		});
+		insertNoteBtn.onclick = () => this.openNotePicker();
+
+		// Input row (textarea + send button)
+		const inputRow = inputArea.createDiv({ cls: 'vault-chat-input-row' });
+
+		this.inputEl = inputRow.createEl('textarea', {
 			cls: 'vault-chat-input',
 			attr: { placeholder: 'Type a message...' },
 		});
 
-		this.sendBtnEl = inputArea.createEl('button', {
+		this.sendBtnEl = inputRow.createEl('button', {
 			cls: 'vault-chat-send-btn',
 			text: 'Send',
 		});
@@ -215,7 +233,14 @@ tags: [chat-log, eliza]
 				e.preventDefault();
 				this.sendMessage();
 			}
+			// Hide autocomplete on Escape
+			if (e.key === 'Escape') {
+				this.hideAutoComplete();
+			}
 		};
+
+		// Setup wikilink autocomplete
+		this.setupAutoComplete();
 	}
 
 	private renderMessages(): void {
@@ -229,7 +254,8 @@ tags: [chat-log, eliza]
 			const contentEl = msgEl.createDiv({
 				cls: 'vault-chat-message-content',
 			});
-			contentEl.textContent = msg.content;
+			// Use wikilink-aware rendering
+			this.renderMessageContent(msg.content, contentEl);
 		}
 
 		// Scroll to bottom
@@ -540,5 +566,130 @@ tags: [chat-log, eliza]
 		} catch (error) {
 			console.error('Failed to load conversation:', error);
 		}
+	}
+
+	private renderMessageContent(content: string, containerEl: HTMLElement): void {
+		// Regex to find [[wikilinks]]
+		const wikilinkRegex = /\[\[([^\]]+)\]\]/g;
+		let lastIndex = 0;
+		let match;
+
+		while ((match = wikilinkRegex.exec(content)) !== null) {
+			// Text before the wikilink
+			if (match.index > lastIndex) {
+				containerEl.createSpan({ text: content.slice(lastIndex, match.index) });
+			}
+
+			// The wikilink itself
+			const linkText = match[1];
+			const linkEl = containerEl.createSpan({ cls: 'vault-chat-wikilink' });
+			linkEl.textContent = linkText;
+			linkEl.onclick = () => this.openNote(linkText);
+
+			lastIndex = match.index + match[0].length;
+		}
+
+		// Remaining text
+		if (lastIndex < content.length) {
+			containerEl.createSpan({ text: content.slice(lastIndex) });
+		}
+	}
+
+	private async openNote(noteName: string): Promise<void> {
+		// Try to find the note
+		const files = this.app.vault.getMarkdownFiles();
+		const targetFile = files.find(
+			(f) =>
+				f.basename.toLowerCase() === noteName.toLowerCase() ||
+				f.path.toLowerCase().includes(noteName.toLowerCase())
+		);
+
+		if (targetFile) {
+			await this.app.workspace.openLinkText(targetFile.path, '', false);
+		} else {
+			new Notice(`Note not found: ${noteName}`);
+		}
+	}
+
+	private openNotePicker(): void {
+		const modal = new NotePickerModal(this.app, (notePath) => {
+			if (this.inputEl && notePath) {
+				const noteName = notePath.replace(/\.md$/, '').split('/').pop();
+				const wikilink = `[[${noteName}]]`;
+
+				// Insert at cursor or append
+				const cursorPos = this.inputEl.selectionStart;
+				const before = this.inputEl.value.slice(0, cursorPos);
+				const after = this.inputEl.value.slice(cursorPos);
+				this.inputEl.value = before + wikilink + after;
+				this.inputEl.focus();
+			}
+		});
+		modal.open();
+	}
+
+	private setupAutoComplete(): void {
+		if (!this.inputEl) return;
+
+		this.inputEl.oninput = () => {
+			const value = this.inputEl!.value;
+			const cursorPos = this.inputEl!.selectionStart;
+
+			// Check if we just typed [[
+			if (value.slice(cursorPos - 2, cursorPos) === '[[') {
+				this.showAutoComplete(cursorPos);
+			} else {
+				// Hide autocomplete if not typing after [[
+				const beforeCursor = value.slice(0, cursorPos);
+				const lastOpenBracket = beforeCursor.lastIndexOf('[[');
+				if (lastOpenBracket === -1 || beforeCursor.slice(lastOpenBracket + 2).includes(']]')) {
+					this.hideAutoComplete();
+				}
+			}
+		};
+	}
+
+	private showAutoComplete(cursorPos: number): void {
+		// Create autocomplete dropdown
+		if (this.autoCompleteEl) {
+			this.autoCompleteEl.remove();
+		}
+
+		this.autoCompleteEl = this.contentEl.createDiv({ cls: 'vault-chat-autocomplete' });
+
+		const files = this.app.vault.getMarkdownFiles().slice(0, 10);
+
+		for (const file of files) {
+			const item = this.autoCompleteEl.createDiv({ cls: 'vault-chat-autocomplete-item' });
+			item.textContent = file.basename;
+			item.onclick = () => {
+				this.insertAutoComplete(file.basename, cursorPos);
+			};
+		}
+
+		// Position near input
+		const inputRect = this.inputEl!.getBoundingClientRect();
+		this.autoCompleteEl.style.position = 'absolute';
+		this.autoCompleteEl.style.bottom = '100px';
+		this.autoCompleteEl.style.left = '12px';
+		this.autoCompleteEl.style.right = '12px';
+	}
+
+	private insertAutoComplete(noteName: string, startPos: number): void {
+		if (!this.inputEl) return;
+
+		const before = this.inputEl.value.slice(0, startPos);
+		const after = this.inputEl.value.slice(startPos);
+
+		this.inputEl.value = before + noteName + ']]' + after;
+		this.inputEl.focus();
+
+		this.autoCompleteEl?.remove();
+		this.autoCompleteEl = null;
+	}
+
+	private hideAutoComplete(): void {
+		this.autoCompleteEl?.remove();
+		this.autoCompleteEl = null;
 	}
 }

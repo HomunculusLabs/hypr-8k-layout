@@ -242,10 +242,16 @@
 
 .vault-chat-input-area {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
+}
+
+.vault-chat-input-row {
+  display: flex;
+  gap: 8px;
 }
 
 .vault-chat-input {
@@ -414,5 +420,59 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9em;
+}
+
+/* Wikilink styles */
+.vault-chat-wikilink {
+  background: var(--background-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-accent);
+}
+
+.vault-chat-wikilink:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Chat actions */
+.vault-chat-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.vault-chat-insert-note-btn {
+  font-size: 0.85em;
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-normal);
+}
+
+.vault-chat-insert-note-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Autocomplete */
+.vault-chat-autocomplete {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.vault-chat-autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.vault-chat-autocomplete-item:hover {
+  background: var(--background-secondary);
 }
 
