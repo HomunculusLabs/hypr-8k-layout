@@ -131,6 +131,25 @@ calculate_grid() {
     echo "$cols $rows"
 }
 
+# Calculate grid for center zone (prefers horizontal/side-by-side layout)
+# Usage: read -r cols rows <<< "$(calculate_grid_center 2)"
+calculate_grid_center() {
+    local count=$1
+    local cols rows
+
+    if [[ $count -eq 1 ]]; then
+        cols=1; rows=1
+    elif [[ $count -eq 2 ]]; then
+        cols=2; rows=1  # Side-by-side
+    elif [[ $count -le 4 ]]; then
+        cols=2; rows=2  # 2x2 grid
+    else
+        cols=2; rows=2  # Cap at 4 for center
+    fi
+
+    echo "$cols $rows"
+}
+
 # Get minimum width for app class
 get_min_width() {
     local class=$1

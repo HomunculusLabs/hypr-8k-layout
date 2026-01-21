@@ -20,7 +20,8 @@ if [[ "$ZONE" == "left" ]]; then
         if [[ ${#prim_windows[@]} -gt 0 ]]; then
             for addr in "${prim_windows[@]}"; do
                 [[ -z "$addr" ]] && continue
-                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $prim_width $TOTAL_HEIGHT ; dispatch moveactive exact $prim_x $ZONE_Y"
+                hyprctl dispatch resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
             done
         fi
 
@@ -58,7 +59,8 @@ if [[ "$ZONE" == "left" ]]; then
                     x=$(( sec_x + col * (cell_width + GAP_IN) ))
                     y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
                 fi
-                hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+                hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
                 ((i++))
             done
         fi
@@ -71,8 +73,17 @@ fi
 read -r ZONE_X ZONE_WIDTH TAG <<< "$(get_zone_dimensions "$ZONE")"
 
 # Get all windows in this zone and workspace
-mapfile -t windows < <(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$TAG\")) != null) | .address")
+# Sort by: 1) existing position tag, 2) y position (row), 3) x position (column)
+# This ensures stable ordering - windows keep their grid positions when others close
+mapfile -t windows < <(hyprctl clients -j | jq -r "
+    [.[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$TAG\")) != null)
+     | . + {
+         pos_tag: ((.tags // []) | map(select(startswith(\"centerstage-right-\")) | ltrimstr(\"centerstage-right-\") | tonumber) | first // 999),
+         pos_y: .at[1],
+         pos_x: .at[0]
+       }]
+    | sort_by([.pos_tag, .pos_y, .pos_x])
+    | .[].address")
 
 count=${#windows[@]}
 
@@ -92,8 +103,12 @@ if [[ "$ZONE" == "right" ]]; then
     ZONE_X=$(( SCREEN_WIDTH - EDGE_MARGIN - ZONE_WIDTH ))
 fi
 
-# Calculate grid dimensions
-read -r cols rows <<< "$(calculate_grid $count)"
+# Calculate grid dimensions (center zone uses side-by-side layout)
+if [[ "$ZONE" == "center" ]]; then
+    read -r cols rows <<< "$(calculate_grid_center $count)"
+else
+    read -r cols rows <<< "$(calculate_grid $count)"
+fi
 
 # Calculate cell dimensions
 if [[ $cols -eq 1 ]]; then
@@ -128,7 +143,8 @@ for addr in "${windows[@]}"; do
         y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
     fi
 
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
 
     # Assign position tag for right sidebar (1-indexed)
     if [[ "$ZONE" == "right" ]]; then
