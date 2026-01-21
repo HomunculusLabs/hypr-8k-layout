@@ -6,6 +6,10 @@ export interface VaultToolsSettings {
   projectsFolder: string;
   dailyFolder: string;
   templatesFolder: string;
+  // Eliza settings
+  elizaApiKey: string;
+  elizaBaseUrl: string;
+  elizaCharacterId: string;
 }
 
 export const DEFAULT_SETTINGS: VaultToolsSettings = {
@@ -13,6 +17,9 @@ export const DEFAULT_SETTINGS: VaultToolsSettings = {
   projectsFolder: '8 - Projects',
   dailyFolder: '1 - Rough Notes/Daily Notes',
   templatesFolder: '5 - Templates',
+  elizaApiKey: '',
+  elizaBaseUrl: 'https://eliza-api.runiverse.ai/api/v1',
+  elizaCharacterId: '0691e3a9-88e3-431a-94a8-3a41e8633905', // Sir SKanK
 };
 
 export class VaultToolsSettingTab extends PluginSettingTab {
@@ -75,6 +82,45 @@ export class VaultToolsSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.templatesFolder)
           .onChange(async (value) => {
             this.plugin.settings.templatesFolder = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    containerEl.createEl('h3', { text: 'Eliza Chat', cls: 'setting-item-heading' });
+
+    new Setting(containerEl)
+      .setName('Eliza API Key')
+      .setDesc('API key for Eliza server (elk_xxx)')
+      .addText((text) =>
+        text
+          .setPlaceholder('elk_...')
+          .setValue(this.plugin.settings.elizaApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.elizaApiKey = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Eliza Base URL')
+      .setDesc('Eliza API server URL')
+      .addText((text) =>
+        text
+          .setValue(this.plugin.settings.elizaBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.elizaBaseUrl = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Character ID')
+      .setDesc('Eliza character UUID')
+      .addText((text) =>
+        text
+          .setValue(this.plugin.settings.elizaCharacterId)
+          .onChange(async (value) => {
+            this.plugin.settings.elizaCharacterId = value;
             await this.plugin.saveSettings();
           })
       );

@@ -16,6 +16,7 @@
 		"lint": "bun run biome check ."
 	},
 	"dependencies": {
+		"@eliza/sdk": "file:../eliza-sdk",
 		"commander": "^12.0.0",
 		"yaml": "^2.4.0",
 		"zod": "^4.3.5"

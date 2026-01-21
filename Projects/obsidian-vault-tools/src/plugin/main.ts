@@ -17,6 +17,7 @@ import type { FrontmatterSchemas } from '../types';
 import { DEFAULT_SETTINGS, type VaultToolsSettings, VaultToolsSettingTab } from './settings';
 import { VaultToolsSidebarView, VIEW_TYPE_VAULT_TOOLS } from './sidebar-view';
 import { TemplatePickerModal } from './template-modal';
+import { VaultChatView, VIEW_TYPE_VAULT_CHAT } from './chat-view';
 
 export interface QuickStats {
   noteCount: number;
@@ -40,9 +41,14 @@ export default class VaultToolsPlugin extends Plugin {
     this.schemas = await this.loadSchemasFromConfig();
 
     this.registerView(VIEW_TYPE_VAULT_TOOLS, (leaf) => new VaultToolsSidebarView(leaf, this));
+    this.registerView(VIEW_TYPE_VAULT_CHAT, (leaf) => new VaultChatView(leaf, this));
 
     this.addRibbonIcon('wrench', 'Vault Tools', () => {
       void this.activateView();
+    });
+
+    this.addRibbonIcon('message-circle', 'Vault Chat', () => {
+      void this.activateChatView();
     });
 
     this.addSettingTab(new VaultToolsSettingTab(this.app, this));
@@ -103,10 +109,19 @@ export default class VaultToolsPlugin extends Plugin {
         void this.refreshStats();
       },
     });
+
+    this.addCommand({
+      id: 'open-chat',
+      name: 'Open Vault Chat',
+      callback: () => {
+        void this.activateChatView();
+      },
+    });
   }
 
   onunload(): void {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULT_TOOLS);
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULT_CHAT);
   }
 
   async activateView(): Promise<void> {
@@ -129,6 +144,19 @@ export default class VaultToolsPlugin extends Plugin {
       return;
     }
     await this.activateView();
+  }
+
+  async activateChatView(): Promise<void> {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE_VAULT_CHAT)[0];
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf('tab');
+      if (!leaf) {
+        return;
+      }
+      await leaf.setViewState({ type: VIEW_TYPE_VAULT_CHAT, active: true });
+    }
+    workspace.revealLeaf(leaf);
   }
 
   async loadSettings(): Promise<void> {
