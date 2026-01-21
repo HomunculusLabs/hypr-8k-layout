@@ -320,3 +320,99 @@
   font-weight: 500;
 }
 
+/* History Panel */
+.vault-chat-history-btn {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.vault-chat-history-btn:hover {
+  opacity: 1;
+}
+
+.vault-chat-history-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background-primary);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.vault-chat-history-panel.hidden {
+  display: none;
+}
+
+.vault-chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.vault-chat-history-header h5 {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.vault-chat-history-close {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  line-height: 1;
+  padding: 0 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.vault-chat-history-close:hover {
+  color: var(--text-normal);
+}
+
+.vault-chat-history-search {
+  margin: 8px 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+}
+
+.vault-chat-history-search:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.vault-chat-history-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.vault-chat-history-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.9em;
+}
+
+.vault-chat-history-item:hover {
+  background: var(--background-secondary);
+}
+
+.vault-chat-history-empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+

@@ -1,4 +1,4 @@
-import { ItemView, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, TFile, type WorkspaceLeaf, setIcon } from 'obsidian';
 import { ElizaClient } from '@eliza/sdk';
 import type VaultToolsPlugin from './main';
 
@@ -20,6 +20,11 @@ export class VaultChatView extends ItemView {
 	private sendBtnEl: HTMLButtonElement | null = null;
 	private contextEnabled: boolean = true;
 	private contextIndicatorEl: HTMLElement | null = null;
+
+	// Conversation history
+	private currentConversationFile: string | null = null;
+	private historyPanelEl: HTMLElement | null = null;
+	private showHistoryPanel: boolean = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: VaultToolsPlugin) {
 		super(leaf);
@@ -48,6 +53,8 @@ export class VaultChatView extends ItemView {
 		this.messagesEl = null;
 		this.inputEl = null;
 		this.sendBtnEl = null;
+		this.contextIndicatorEl = null;
+		this.historyPanelEl = null;
 	}
 
 	private initElizaClient(): void {
@@ -79,6 +86,81 @@ export class VaultChatView extends ItemView {
 		});
 	}
 
+	private async saveConversation(): Promise<void> {
+		if (this.messages.length === 0) return;
+
+		const conversationsFolder = '1 - Rough Notes/Conversations';
+		const date = window.moment().format('YYYY-MM-DD');
+		let filename = `${date}-vault-chat.md`;
+
+		// Ensure folder exists
+		const folderExists = this.app.vault.getAbstractFileByPath(conversationsFolder);
+		if (!folderExists) {
+			await this.app.vault.createFolder(conversationsFolder);
+		}
+
+		// If we're continuing an existing conversation, update it
+		if (this.currentConversationFile) {
+			const existingFile = this.app.vault.getAbstractFileByPath(this.currentConversationFile);
+			if (existingFile && 'extension' in existingFile) {
+				await this.app.vault.modify(existingFile as TFile, this.formatConversationContent());
+				return;
+			}
+		}
+
+		// Check for existing file, increment if needed
+		let counter = 1;
+		while (this.app.vault.getAbstractFileByPath(`${conversationsFolder}/${filename}`)) {
+			counter++;
+			filename = `${date}-vault-chat-${counter}.md`;
+		}
+
+		const content = this.formatConversationContent();
+		const filePath = `${conversationsFolder}/${filename}`;
+		await this.app.vault.create(filePath, content);
+
+		// Store current file path for updates
+		this.currentConversationFile = filePath;
+	}
+
+	private formatConversationContent(): string {
+		const { elizaCharacterId } = this.plugin.settings;
+		const characterName = 'Sir SKanK';
+		const date = window.moment().format('YYYY-MM-DD');
+
+		let content = `---
+created: ${window.moment().toISOString()}
+character: ${characterName}
+characterId: ${elizaCharacterId}
+conversationId: ${this.conversationId || 'unknown'}
+tags: [chat-log, eliza]
+---
+
+# Vault Chat - ${date}
+
+`;
+
+		let currentHour = '';
+		for (const msg of this.messages) {
+			const msgTime = window.moment(msg.timestamp).format('HH:mm');
+
+			if (msgTime !== currentHour) {
+				content += `## ${msgTime}\n`;
+				currentHour = msgTime;
+			}
+
+			if (msg.role === 'user') {
+				content += `**You**: ${msg.content}\n\n`;
+			} else if (msg.role === 'assistant') {
+				content += `**${characterName}**: ${msg.content}\n\n`;
+			} else if (msg.role === 'system') {
+				content += `> [System] ${msg.content}\n\n`;
+			}
+		}
+
+		return content;
+	}
+
 	async render(): Promise<void> {
 		const container = this.contentEl;
 		container.empty();
@@ -87,6 +169,17 @@ export class VaultChatView extends ItemView {
 		// Header
 		const header = container.createDiv({ cls: 'vault-chat-header' });
 		header.createEl('h4', { text: 'Vault Chat' });
+
+		// History button
+		const historyBtn = header.createEl('button', {
+			cls: 'vault-chat-history-btn',
+		});
+		setIcon(historyBtn, 'history');
+		historyBtn.setAttribute('aria-label', 'History');
+		historyBtn.onclick = () => this.toggleHistoryPanel();
+
+		// History panel (hidden by default)
+		this.historyPanelEl = container.createDiv({ cls: 'vault-chat-history-panel hidden' });
 
 		// Context indicator (after header)
 		this.contextIndicatorEl = container.createDiv({ cls: 'vault-chat-context' });
@@ -202,10 +295,12 @@ export class VaultChatView extends ItemView {
 						assistantMsg.content += token;
 						this.updateLastMessage(assistantMsg.content);
 					},
-					onComplete: (response) => {
+					onComplete: async (response) => {
 						this.conversationId = response.conversationId;
 						this.hideTypingIndicator();
 						this.renderMessages();
+						// Auto-save conversation after receiving response
+						await this.saveConversation();
 					},
 					onError: (error) => {
 						this.hideTypingIndicator();
@@ -332,6 +427,118 @@ export class VaultChatView extends ItemView {
 					text: content,
 				});
 			}
+		}
+	}
+
+	private toggleHistoryPanel(): void {
+		this.showHistoryPanel = !this.showHistoryPanel;
+		if (this.showHistoryPanel) {
+			this.historyPanelEl?.removeClass('hidden');
+			void this.renderHistoryPanel();
+		} else {
+			this.historyPanelEl?.addClass('hidden');
+		}
+	}
+
+	private async renderHistoryPanel(): Promise<void> {
+		if (!this.historyPanelEl) return;
+		this.historyPanelEl.empty();
+
+		const header = this.historyPanelEl.createDiv({ cls: 'vault-chat-history-header' });
+		header.createEl('h5', { text: 'Conversation History' });
+
+		const closeBtn = header.createEl('button', { cls: 'vault-chat-history-close', text: '×' });
+		closeBtn.onclick = () => this.toggleHistoryPanel();
+
+		// Search
+		const searchEl = this.historyPanelEl.createEl('input', {
+			cls: 'vault-chat-history-search',
+			attr: { placeholder: 'Search conversations...', type: 'text' },
+		});
+
+		// List conversations
+		const listEl = this.historyPanelEl.createDiv({ cls: 'vault-chat-history-list' });
+
+		const conversationsFolder = '1 - Rough Notes/Conversations';
+		const folder = this.app.vault.getAbstractFileByPath(conversationsFolder);
+
+		if (folder && 'children' in folder) {
+			const files = (folder as any).children
+				.filter((f: any) => f.extension === 'md')
+				.sort((a: any, b: any) => b.stat.mtime - a.stat.mtime);
+
+			// Add search functionality
+			const renderList = (filterText = ''): void => {
+				listEl.empty();
+				const filteredFiles = filterText
+					? files.filter((f: any) => f.basename.toLowerCase().includes(filterText.toLowerCase()))
+					: files;
+
+				for (const file of filteredFiles.slice(0, 20)) {
+					const item = listEl.createDiv({ cls: 'vault-chat-history-item' });
+					item.createSpan({ text: file.basename });
+					item.onclick = () => {
+						void this.loadConversation(file.path);
+					};
+				}
+
+				if (filteredFiles.length === 0) {
+					listEl.createDiv({
+						cls: 'vault-chat-history-empty',
+						text: 'No conversations found.',
+					});
+				}
+			};
+
+			renderList();
+
+			// Search input listener
+			searchEl.oninput = (e) => {
+				const target = e.target as HTMLInputElement;
+				renderList(target.value);
+			};
+		} else {
+			listEl.createDiv({
+				cls: 'vault-chat-history-empty',
+				text: 'No conversations yet. Start chatting!',
+			});
+		}
+	}
+
+	private async loadConversation(filePath: string): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!file || !('extension' in file)) return;
+
+		try {
+			const content = await this.app.vault.read(file as TFile);
+
+			// Parse frontmatter
+			const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+			if (frontmatterMatch) {
+				const frontmatter = frontmatterMatch[1];
+				const conversationIdMatch = frontmatter.match(/conversationId:\s*(.+)/);
+				if (conversationIdMatch) {
+					this.conversationId = conversationIdMatch[1].trim();
+				}
+			}
+
+			// Parse messages
+			this.messages = [];
+			const messageRegex = /\*\*(You|Sir SKanK)\*\*:\s*([\s\S]*?)(?=\n\n|\n##|\*\*|$)/g;
+			let match;
+			while ((match = messageRegex.exec(content)) !== null) {
+				this.messages.push({
+					role: match[1] === 'You' ? 'user' : 'assistant',
+					content: match[2].trim(),
+					timestamp: new Date(),
+				});
+			}
+
+			this.currentConversationFile = filePath;
+			this.toggleHistoryPanel();
+			this.renderMessages();
+		} catch (error) {
+			console.error('Failed to load conversation:', error);
 		}
 	}
 }

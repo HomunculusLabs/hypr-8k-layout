@@ -135,7 +135,7 @@
 
 - [x] Chat view + Eliza API integration [071-eliza-chat-view.md]
 - [x] Streaming responses + vault context injection [072-eliza-streaming-context.md]
-- [ ] Conversation history logging to vault [073-eliza-conversation-history.md]
+- [x] Conversation history logging to vault [073-eliza-conversation-history.md]
 - [ ] Wikilink rendering + note picker [074-eliza-note-linking.md]
 - [ ] Action system (navigate, create, edit, search) [075-eliza-action-system.md]
 - [ ] Vault tools bridge (agent can run tools) [076-eliza-vault-tools-integration.md]
