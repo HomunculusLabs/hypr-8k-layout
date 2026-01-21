@@ -478,3 +478,46 @@
   background: var(--background-secondary);
 }
 
+/* Quick Tools Panel */
+.vault-chat-tools-panel {
+  padding: 8px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.vault-chat-tools-header {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.vault-chat-tools-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vault-chat-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.vault-chat-tool-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.vault-chat-tool-btn-label {
+  font-weight: 500;
+}
+
+

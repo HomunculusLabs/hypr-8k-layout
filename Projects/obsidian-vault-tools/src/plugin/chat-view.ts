@@ -146,6 +146,9 @@ export class VaultChatView extends ItemView {
 			case 'search':
 				await this.actionSearch(action.params as { query: string });
 				break;
+			case 'tool':
+				await this.actionTool(action.params as { name: string; options?: Record<string, unknown> });
+				break;
 			default:
 				console.warn('Unknown action type:', action.type);
 		}
@@ -279,6 +282,109 @@ export class VaultChatView extends ItemView {
 		}
 	}
 
+	private async actionTool(params: { name: string; options?: Record<string, unknown> }): Promise<void> {
+		const { name } = params;
+
+		switch (name) {
+			case 'stats':
+				await this.runToolStats();
+				break;
+			case 'lint':
+				await this.runToolLint();
+				break;
+			case 'link-check':
+				await this.runToolLinkCheck();
+				break;
+			case 'stale-check':
+				await this.runToolStaleCheck();
+				break;
+			case 'project-health':
+				await this.runToolProjectHealth();
+				break;
+			case 'ralph-queue':
+				await this.runToolRalphQueue();
+				break;
+			default:
+				this.addSystemMessage(`✗ Unknown tool: ${name}`);
+		}
+	}
+
+	private async runToolStats(): Promise<void> {
+		this.addSystemMessage('📊 Running vault stats...');
+
+		try {
+			const stats = await this.plugin.getQuickStats();
+
+			const output = `📊 **Vault Stats**
+• Notes: ${stats.noteCount}
+• Words: ${stats.wordCount.toLocaleString()}
+• Links: ${stats.linkCount}
+• Orphans: ${stats.orphanCount}`;
+
+			this.addSystemMessage(output);
+		} catch (error) {
+			this.addSystemMessage(`✗ Stats failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	private async runToolLint(): Promise<void> {
+		this.addSystemMessage('✓ Running frontmatter lint...');
+
+		try {
+			const result = await this.plugin.runLint();
+
+			// Since runLint uses the sidebar view, we need to show a simple message
+			// The detailed results will be in the sidebar
+			this.addSystemMessage('✓ **Lint complete** - Check sidebar for detailed results.');
+		} catch (error) {
+			this.addSystemMessage(`✗ Lint failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	private async runToolLinkCheck(): Promise<void> {
+		this.addSystemMessage('🔗 Running link check...');
+
+		try {
+			await this.plugin.runLinkCheck();
+			this.addSystemMessage('✓ **Link check complete** - Check sidebar for detailed results.');
+		} catch (error) {
+			this.addSystemMessage(`✗ Link check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	private async runToolStaleCheck(): Promise<void> {
+		this.addSystemMessage('⏰ Running stale todo check...');
+
+		try {
+			await this.plugin.runStaleCheck();
+			this.addSystemMessage('✓ **Stale check complete** - Check sidebar for detailed results.');
+		} catch (error) {
+			this.addSystemMessage(`✗ Stale check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	private async runToolProjectHealth(): Promise<void> {
+		this.addSystemMessage('🏥 Running project health check...');
+
+		try {
+			await this.plugin.runProjectHealth();
+			this.addSystemMessage('✓ **Project health complete** - Check sidebar for detailed results.');
+		} catch (error) {
+			this.addSystemMessage(`✗ Project health failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	private async runToolRalphQueue(): Promise<void> {
+		this.addSystemMessage('📋 Running Ralph queue check...');
+
+		try {
+			await this.plugin.runRalphQueue();
+			this.addSystemMessage('✓ **Ralph queue complete** - Check sidebar for detailed results.');
+		} catch (error) {
+			this.addSystemMessage(`✗ Ralph queue failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
 	private async saveConversation(): Promise<void> {
 		if (this.messages.length === 0) return;
 
@@ -388,6 +494,9 @@ tags: [chat-log, eliza]
 		// Messages area
 		this.messagesEl = container.createDiv({ cls: 'vault-chat-messages' });
 		this.renderMessages();
+
+		// Quick tools panel
+		this.renderToolsPanel(container);
 
 		// Input area
 		const inputArea = container.createDiv({ cls: 'vault-chat-input-area' });
@@ -892,5 +1001,34 @@ tags: [chat-log, eliza]
 	private hideAutoComplete(): void {
 		this.autoCompleteEl?.remove();
 		this.autoCompleteEl = null;
+	}
+
+	private renderToolsPanel(container: HTMLElement): void {
+		const toolsPanel = container.createDiv({ cls: 'vault-chat-tools-panel' });
+
+		const header = toolsPanel.createDiv({ cls: 'vault-chat-tools-header' });
+		header.createEl('span', { text: '🔧 Quick Tools' });
+
+		const toolsGrid = toolsPanel.createDiv({ cls: 'vault-chat-tools-grid' });
+
+		const tools = [
+			{ name: 'stats', icon: '📊', label: 'Stats' },
+			{ name: 'link-check', icon: '🔗', label: 'Links' },
+			{ name: 'lint', icon: '✓', label: 'Lint' },
+			{ name: 'stale-check', icon: '⏰', label: 'Stale' },
+			{ name: 'project-health', icon: '🏥', label: 'Health' },
+			{ name: 'ralph-queue', icon: '📋', label: 'Queue' },
+		];
+
+		for (const tool of tools) {
+			const btn = toolsGrid.createEl('button', {
+				cls: 'vault-chat-tool-btn',
+			});
+			btn.createSpan({ text: `${tool.icon} ` });
+			btn.createSpan({ text: tool.label, cls: 'vault-chat-tool-btn-label' });
+			btn.onclick = () => {
+				void this.actionTool({ name: tool.name });
+			};
+		}
 	}
 }
