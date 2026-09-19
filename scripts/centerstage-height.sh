@@ -58,8 +58,8 @@ done
 read -r new_height new_y <<< "${HEIGHTS[$next_height]}"
 
 # Update center window (preserve current width and x position)
-hyprctl dispatch focuswindow "address:$center_addr"
-hyprctl dispatch resizeactive exact $current_width $new_height
-hyprctl dispatch moveactive exact $current_x $new_y
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact $current_width $new_height
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact $current_x $new_y
 
 notify-send "Center Stage" "Height: ${new_height}px"

@@ -78,9 +78,9 @@ right_sidebar_width=$(( base_sidebar_width - sidebar_offset ))
 new_right_x=$(( new_center_x + new_width + GAP_IN ))
 
 # Update center window (preserve current height and y position)
-hyprctl dispatch focuswindow "address:$center_addr"
-hyprctl dispatch resizeactive exact $new_width $current_height
-hyprctl dispatch moveactive exact $new_center_x $current_y
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact $new_width $current_height
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact $new_center_x $current_y
 
 # Update left sidebar windows
 left_windows=$(hyprctl clients -j | jq -r \
@@ -103,7 +103,9 @@ if [[ "$count" -gt 0 ]]; then
     while IFS= read -r addr; do
         [[ -z "$addr" ]] && continue
         y=$(( ZONE_Y + i * (win_height + 100) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $left_sidebar_width $win_height ; dispatch moveactive exact 80 $y"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact "$left_sidebar_width" "$win_height"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 80 "$y"
         ((i++))
     done <<< "$left_windows"
 fi
@@ -129,7 +131,9 @@ if [[ "$count" -gt 0 ]]; then
     while IFS= read -r addr; do
         [[ -z "$addr" ]] && continue
         y=$(( ZONE_Y + i * (win_height + 100) ))
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $right_sidebar_width $win_height ; dispatch moveactive exact $new_right_x $y"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact "$right_sidebar_width" "$win_height"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact "$new_right_x" "$y"
         ((i++))
     done <<< "$right_windows"
 fi

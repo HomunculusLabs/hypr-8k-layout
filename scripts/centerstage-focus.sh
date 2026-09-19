@@ -24,4 +24,4 @@ addr=$(hyprctl clients -j | jq -r \
     ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"$tag\")) != null) | .address" | head -1)
 
 # Focus window if found (silent no-op if empty)
-[[ -n "$addr" && "$addr" != "null" ]] && hyprctl dispatch focuswindow "address:$addr"
+[[ -n "$addr" && "$addr" != "null" ]] && "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
