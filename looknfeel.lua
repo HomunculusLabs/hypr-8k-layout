@@ -23,8 +23,8 @@ hl.config({
     inactive_opacity = 0.8,
     blur = {
       enabled = true,
-      size = 10,
-      passes = 3,
+      size = 6,
+      passes = 2,
       new_optimizations = true,
       ignore_opacity = false,
     },
@@ -40,15 +40,19 @@ hl.config({
   },
 })
 
--- Preserve the faster movement animation used by Centerstage while retaining
--- the familiar pre-migration timings for the other animation leaves.
-hl.animation({ leaf = "windows", enabled = true, speed = 7, bezier = "default" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 7, bezier = "default", style = "popin 80%" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 2, bezier = "default" })
-hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "default" })
-hl.animation({ leaf = "borderangle", enabled = true, speed = 8, bezier = "default" })
-hl.animation({ leaf = "fade", enabled = true, speed = 7, bezier = "default" })
-hl.animation({ leaf = "workspaces", enabled = true, speed = 6, bezier = "default" })
+-- One non-overshooting ease-out for coordinated Centerstage transitions.
+-- Speeds are deciseconds: 2.4 = 240ms. Explicit leaves override package defaults.
+hl.curve("centerstageEase", { type = "bezier", points = { { 0.16, 1 }, { 0.3, 1 } } })
+hl.animation({ leaf = "windows", enabled = true, speed = 2.4, bezier = "centerstageEase" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.4, bezier = "centerstageEase", style = "popin 96%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.6, bezier = "centerstageEase", style = "popin 96%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 2.4, bezier = "centerstageEase" })
+hl.animation({ leaf = "border", enabled = true, speed = 2, bezier = "centerstageEase" })
+hl.animation({ leaf = "borderangle", enabled = false })
+hl.animation({ leaf = "fade", enabled = true, speed = 1.6, bezier = "centerstageEase" })
+hl.animation({ leaf = "fadeIn", enabled = true, speed = 1.6, bezier = "centerstageEase" })
+hl.animation({ leaf = "fadeOut", enabled = true, speed = 1.6, bezier = "centerstageEase" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "centerstageEase", style = "slidefade 8%" })
 
 -- Window rules migrated to Hyprland's Lua API.
 o.window("^(Alacritty)$", { opacity = "0.70 0.60" })
