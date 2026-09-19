@@ -14,6 +14,8 @@ apply_shrink_if_needed() {
     local workspace=$1
     read_state
 
+    is_pip_workspace_mode && return
+
     [[ "$shrink_mode" != "auto" ]] && return
 
     # Calculate required widths for each sidebar
@@ -69,8 +71,27 @@ handle_window_open() {
     local pid=$(echo "$window_info" | jq -r ".pid")
     local width=$(echo "$window_info" | jq -r ".size[0]")
     local height=$(echo "$window_info" | jq -r ".size[1]")
+    local fullscreen=$(echo "$window_info" | jq -r ".fullscreen // 0")
+    local title=$(echo "$window_info" | jq -r '.title // ""')
 
-    echo "DEBUG: addr=$addr workspace=$workspace floating=$floating class=$class size=${width}x${height} pid=$pid"
+    echo "DEBUG: addr=$addr workspace=$workspace floating=$floating class=$class title=$title size=${width}x${height} pid=$pid"
+
+    # Games launched from the Battle.net bottle share the steam_app_* class
+    # with the Battle.net launcher, but only the launcher should be
+    # zone-managed. Game windows (World of Warcraft, ...) must keep
+    # compositor control: floating them into a sidebar cell makes them
+    # render above tiled windows and resizes them on every retile.
+    if [[ "$class" == steam_app_* && "$title" != Battle.net* ]]; then
+        echo "DEBUG: Skipping game window: class=$class title=$title"
+        return
+    fi
+
+    # Session overlays and fullscreen clients must retain compositor control of
+    # the whole output rather than being floated into a Centerstage zone.
+    if [[ "$class" == "org.omarchy.screensaver" || "$fullscreen" -ne 0 ]]; then
+        echo "DEBUG: Skipping fullscreen/session overlay: class=$class fullscreen=$fullscreen"
+        return
+    fi
 
     # Skip popup/menu windows (small windows are likely context menus or dialogs)
     if [[ "$width" -lt 600 || "$height" -lt 400 ]]; then
@@ -96,20 +117,30 @@ handle_window_open() {
     [[ "$has_tag" -gt 0 ]] && { echo "DEBUG: already has centerstage tag, skipping"; return; }
 
     # Focus the new window first
-    hyprctl dispatch focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+
+    # PIP-ready mode maps one complete Centerstage zone to each workspace.
+    if is_pip_workspace_mode; then
+        case "$workspace" in
+            1) ~/.config/hypr/scripts/centerstage-move.sh center "$addr" ;;
+            2) ~/.config/hypr/scripts/centerstage-move.sh right "$addr" ;;
+            3) ~/.config/hypr/scripts/centerstage-move.sh left "$addr" ;;
+        esac
+        return
+    fi
 
     # Apps that should always go to left sidebar
     case "$class" in
         obsidian)
             echo "DEBUG: Obsidian detected, switching to obsidian-grid layout"
             echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
-            ~/.config/hypr/scripts/centerstage-move.sh left-primary
+            ~/.config/hypr/scripts/centerstage-move.sh left-primary "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
         org.gnome.Nautilus)
             echo "DEBUG: Moving $class to left sidebar"
-            ~/.config/hypr/scripts/centerstage-move.sh left
+            ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
@@ -135,20 +166,20 @@ handle_window_open() {
     if [[ "$center_count" -eq 0 ]]; then
         if is_pbp_mode; then
             echo "DEBUG: PBP mode active, moving to right instead of center"
-            ~/.config/hypr/scripts/centerstage-move.sh right
+            ~/.config/hypr/scripts/centerstage-move.sh right "$addr"
         else
             echo "DEBUG: Moving to center"
-            ~/.config/hypr/scripts/centerstage-move.sh center
+            ~/.config/hypr/scripts/centerstage-move.sh center "$addr"
         fi
     elif [[ "$right_count" -lt 9 ]]; then
         echo "DEBUG: Moving to right"
-        ~/.config/hypr/scripts/centerstage-move.sh right
+        ~/.config/hypr/scripts/centerstage-move.sh right "$addr"
     elif [[ "$left_count" -lt 9 ]]; then
         echo "DEBUG: Right full, moving to left"
-        ~/.config/hypr/scripts/centerstage-move.sh left
+        ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
     else
         echo "DEBUG: Sidebars full, stacking on center"
-        ~/.config/hypr/scripts/centerstage-move.sh center
+        ~/.config/hypr/scripts/centerstage-move.sh center "$addr"
     fi
 
     apply_shrink_if_needed "$workspace"
@@ -160,6 +191,13 @@ handle_window_close() {
     sleep 0.1
 
     local workspace=$(hyprctl activeworkspace -j | jq -r .id)
+
+    if is_pip_workspace_mode; then
+        ~/.config/hypr/scripts/centerstage-retile.sh center 1
+        ~/.config/hypr/scripts/centerstage-retile.sh right 2
+        ~/.config/hypr/scripts/centerstage-retile.sh left 3
+        return
+    fi
 
     # Only handle workspaces 1-3
     [[ "$workspace" -gt 3 ]] && return
@@ -175,11 +213,17 @@ handle_window_close() {
     apply_shrink_if_needed "$workspace"
 }
 
-# Find the Hyprland socket
-SOCKET=$(find /run/user/1000/hypr -name ".socket2.sock" 2>/dev/null | head -1)
+# Listen only to this session's Hyprland event socket. Selecting the first
+# socket under /run/user can attach to a stale instance after a compositor
+# restart and feed non-JSON errors into the handler.
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    echo "HYPRLAND_INSTANCE_SIGNATURE is not set"
+    exit 1
+fi
+SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
-if [[ -z "$SOCKET" ]]; then
-    echo "Could not find Hyprland socket"
+if [[ ! -S "$SOCKET" ]]; then
+    echo "Could not find current Hyprland socket: $SOCKET"
     exit 1
 fi
 

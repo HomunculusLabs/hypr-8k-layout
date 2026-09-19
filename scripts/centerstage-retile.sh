@@ -20,8 +20,8 @@ if [[ "$ZONE" == "left" ]]; then
         if [[ ${#prim_windows[@]} -gt 0 ]]; then
             for addr in "${prim_windows[@]}"; do
                 [[ -z "$addr" ]] && continue
-                hyprctl dispatch resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
             done
         fi
 
@@ -59,8 +59,8 @@ if [[ "$ZONE" == "left" ]]; then
                     x=$(( sec_x + col * (cell_width + GAP_IN) ))
                     y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
                 fi
-                hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
                 ((i++))
             done
         fi
@@ -89,9 +89,9 @@ count=${#windows[@]}
 
 [[ "$count" -eq 0 ]] && exit 0
 
-# Right sidebar: scale width based on window count
-# Calculate minimum width needed for square cells at each grid size
-if [[ "$ZONE" == "right" ]]; then
+# Right sidebar: scale width based on window count in the full-width layout.
+# PIP-ready mode gives the right zone an entire 4K workspace.
+if [[ "$ZONE" == "right" ]] && ! is_pip_workspace_mode; then
     if [[ $count -lt 4 ]]; then
         # 1-3: vertical stack, cell height ~586-1960px, half width (1235px) is plenty
         ZONE_WIDTH=$(( ZONE_WIDTH / 2 ))
@@ -143,17 +143,17 @@ for addr in "${windows[@]}"; do
         y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
     fi
 
-    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
 
     # Assign position tag for right sidebar (1-indexed)
     if [[ "$ZONE" == "right" ]]; then
         # Strip old position tags first
         for pos in {1..9}; do
-            hyprctl dispatch tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null
         done
         # Assign new position tag
-        hyprctl dispatch tagwindow "+centerstage-right-$((i + 1))" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right-$((i + 1))" "address:$addr"
     fi
 
     ((i++))

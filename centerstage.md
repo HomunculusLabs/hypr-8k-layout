@@ -105,12 +105,23 @@ Center window sizes are controlled by:
 - `centerstage-resize.sh` (width presets 1920, 2200, 2560, 3000, 3840)
 - `centerstage-height.sh` (height presets 1080, 1200, 1400, 1600, 1800, 1960)
 
+## PIP/PBP-ready workspace mode
+
+`SUPER+ALT+P` toggles a monitor-split-friendly layout. It saves the current
+workspace assignments, then maps the center zone to workspace 1, the right zone
+to workspace 2, and the left zone to workspace 3. Each zone is retiled into
+a 3840x2160-safe viewport. Toggling again restores the saved workspace
+assignments; windows opened while active join the normal workspace 1 layout.
+
 ## Workspace save and restore
 
 - `centerstage-save.sh` saves window zone assignments to
   `~/.config/hypr/state/centerstage-layout.json`.
-- `centerstage-restore.sh` replays the saved layout on startup.
-- Both are referenced from `~/.config/hypr/autostart.conf`.
+- `centerstage-restore.sh` remains available for generic class-based restores.
+- `centerstage-session-startup.sh` restores the named workspace 1 session:
+  Obsidian on the left, Brave in the center, and the four Hermes terminals in
+  stable right-sidebar order. It is referenced from the Hyprland autostart
+  files.
 
 ## Key bindings
 

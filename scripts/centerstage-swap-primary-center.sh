@@ -37,14 +37,14 @@ center_class=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$center_ad
 # Swap tags - remove old, add new
 
 # Primary window: remove left-primary, add center
-hyprctl dispatch focuswindow "address:$primary_addr"
-hyprctl dispatch tagwindow -- "-centerstage-left-primary"
-hyprctl dispatch tagwindow "+centerstage-center"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$primary_addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-primary"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center"
 
 # Center window: remove center, add left-primary
-hyprctl dispatch focuswindow "address:$center_addr"
-hyprctl dispatch tagwindow -- "-centerstage-center"
-hyprctl dispatch tagwindow "+centerstage-left-primary"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-center"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary"
 
 # Small delay for tag application
 sleep 0.05
@@ -54,6 +54,6 @@ sleep 0.05
 ~/.config/hypr/scripts/centerstage-retile.sh center "$workspace"
 
 # Focus the window that is now in center (was primary)
-hyprctl dispatch focuswindow "address:$primary_addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$primary_addr"
 
 notify-send "Center Stage" "Swapped: $primary_class <-> $center_class"

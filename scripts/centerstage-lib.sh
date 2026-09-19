@@ -22,10 +22,16 @@ LEFT_PRIMARY_RATIO_FILE="$STATE_DIR/centerstage-left-primary-ratio"
 OBSIDIAN_GAP_FILE="$STATE_DIR/centerstage-obsidian-gap"
 PBP_MODE_FILE="$STATE_DIR/centerstage-pbp-mode"
 PBP_SAVED_FILE="$STATE_DIR/centerstage-pbp-saved"
+PIP_WORKSPACE_MODE_FILE="$STATE_DIR/centerstage-pip-workspace-mode"
+PIP_WORKSPACE_SAVED_FILE="$STATE_DIR/centerstage-pip-workspace-saved.json"
 
 # PBP mode constants
 PBP_GAP_IN=50
 PBP_SCREEN_WIDTH=3840
+
+# PIP/PBP-ready workspace mode gives each Centerstage zone its own 4K
+# workspace: center=1, right=2, left=3.
+PIP_WORKSPACE_WIDTH=3840
 
 # Read current state into global variables
 read_state() {
@@ -61,11 +67,35 @@ is_pbp_mode() {
     [[ -f "$PBP_MODE_FILE" ]] && [[ "$(cat "$PBP_MODE_FILE")" == "on" ]]
 }
 
+is_pip_workspace_mode() {
+    [[ -f "$PIP_WORKSPACE_MODE_FILE" ]] && [[ "$(cat "$PIP_WORKSPACE_MODE_FILE")" == "on" ]]
+}
+
+get_pip_workspace_for_zone() {
+    case "$1" in
+        center) echo 1 ;;
+        right) echo 2 ;;
+        left) echo 3 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Calculate zone dimensions
 # Usage: read -r zone_x zone_width tag <<< "$(get_zone_dimensions left)"
 get_zone_dimensions() {
     local zone=$1
     read_state
+
+    # In PIP-ready mode every zone fills its own 4K workspace.
+    if is_pip_workspace_mode; then
+        local pip_width=$((PIP_WORKSPACE_WIDTH - 2 * EDGE_MARGIN))
+        case "$zone" in
+            left)   echo "$EDGE_MARGIN $pip_width centerstage-left" ;;
+            center) echo "$EDGE_MARGIN $pip_width centerstage-center" ;;
+            right)  echo "$EDGE_MARGIN $pip_width centerstage-right" ;;
+        esac
+        return
+    fi
 
     # PBP mode: sidebars fill 4K half, center zone unavailable
     if is_pbp_mode; then
@@ -245,10 +275,15 @@ get_left_subcolumn_dimensions() {
     local subcolumn=$1  # "primary" or "secondary"
     read_state
 
-    # Calculate full available width for left sidebar (ignoring auto-shrink)
-    local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
+    # Calculate full available width for left sidebar (ignoring auto-shrink).
     local left_x=$EDGE_MARGIN
-    local left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
+    local left_width
+    if is_pip_workspace_mode; then
+        left_width=$((PIP_WORKSPACE_WIDTH - 2 * EDGE_MARGIN))
+    else
+        local center_x=$(( (SCREEN_WIDTH - center_width) / 2 ))
+        left_width=$(( center_x - GAP_IN - EDGE_MARGIN ))
+    fi
 
     local layout_mode=$(get_left_layout_mode)
 
