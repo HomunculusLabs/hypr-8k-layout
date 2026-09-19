@@ -60,6 +60,52 @@ Retiling is done by `~/.config/hypr/scripts/centerstage-retile.sh`, which:
 - For the left sidebar in split mode, the primary sub-column is a single tall
   window and the secondary sub-column uses the grid.
 
+## Smooth transitions and responsiveness
+
+The active `scripts/` entrypoints for retile, move, and directional swap share
+`centerstage-transaction.sh` and `centerstage-plan.sh`. The separate legacy
+`layouts/centerstage/` helpers are not replaced by this change.
+
+- Each operation takes one client snapshot under a shared layout lock and
+  submits its geometry and tag changes in one Lua compositor update.
+- An already-settled retile sends no mutations. Resizing still restores the
+  top-left anchor because Hyprland resizes floating windows around their center.
+- Moving a window reflows both its old zone and its new zone together, without
+  a fixed sleep or a keyboard-focus change.
+- Up/down swaps exchange existing cell rectangles, preserving their widths
+  and right-sidebar numbered shortcuts. Left/right follows the visual order
+  in `grid-obsidian` mode as well as the other left layouts.
+- Fullscreen, hidden, pinned, screensaver, and game windows are excluded from
+  these automatic layout transactions. A changed workspace or zone membership
+  between planning and application invalidates that window's queued updates.
+- The handler and other legacy sizing/PIP helpers retain their own behavior;
+  not every legacy helper participates in the new lock.
+
+`looknfeel.lua` sets a local non-overshooting ease-out curve, 240ms opening and
+movement, 160ms closing/fades, and a 300ms workspace slide/fade over only 8% of
+screen width. Blur remains enabled with two passes at size 6. Opacity, colors,
+monitor mode, and keybindings are unchanged. Motion/blur tuning and the layout
+pipeline are separate commits so either can be reverted independently.
+
+Run the isolated regressions (no desktop interaction):
+
+```sh
+python3 tests/test-centerstage-smoothness.py -v
+python3 tests/test-centerstage-interactions.py -v
+python3 tests/test-centerstage-motion.py -v
+bash tests/test-centerstage-config.sh
+bash tests/test-centerstage-migration.sh
+bash tests/test-centerstage-pip-workspaces.sh
+bash tests/test-centerstage-pip-workspace-edge-cases.sh
+```
+
+The Python tests require Python 3 and `lua`, and execute the production shell
+entrypoints against a Lua-backed Hyprland fixture with an isolated HOME. They
+exercise batching, no-op layouts, resize anchoring, stable swaps, protection
+races, tiled clients, left layout variants, and 1–9 right-sidebar cells in
+normal and PIP workspace modes. Fixture timings measure command overhead,
+not compositor frame rate.
+
 ## Sidebar behavior
 
 ### Left sidebar modes
