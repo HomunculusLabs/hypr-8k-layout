@@ -54,9 +54,34 @@ centerstage_plan_grid() {
 }
 
 centerstage_plan_zone() {
-    local zone=$1 workspace=$2 zone_x zone_width tag addr
+    local zone=$1 workspace=$2 zone_x zone_width tag addr left_mode old_tag
     [[ "$zone" =~ ^(left|center|right)$ && "$workspace" =~ ^[1-3]$ ]] || return 1
-    if [[ "$zone" == left && "$(get_left_layout_mode)" != single ]]; then
+    if [[ "$zone" == left ]]; then
+        left_mode=$(get_left_layout_mode "$workspace")
+        # Workspace/PIP transfers can bring memberships from a different mode.
+        # Reconcile them inside this same batch before computing cell geometry.
+        while read -r addr tag; do
+            [[ -n "$addr" ]] || continue
+            for old_tag in centerstage-left centerstage-left-primary centerstage-left-secondary; do
+                [[ "$old_tag" == "$tag" ]] || centerstage_tag "$addr" "-$old_tag" || return 1
+            done
+            centerstage_tag "$addr" "+$tag" || return 1
+            CENTERSTAGE_CLIENTS=$(jq -c --arg addr "$addr" --arg tag "$tag" '
+                map(if .address == $addr then
+                    .tags = ((.tags // []) | map(select(test("^centerstage-left(-(primary|secondary))?$") | not))) + [$tag]
+                else . end)' <<< "$CENTERSTAGE_CLIENTS") || return 1
+        done < <(jq -r --argjson ws "$workspace" --arg mode "$left_mode" '
+            .[] | select(.workspace.id == $ws) |
+            ((.tags // []) | map(select(test("^centerstage-left(-(primary|secondary))?$")))) as $left |
+            select($left | length > 0) |
+            (if $mode == "single" then "centerstage-left"
+             elif $left | index("centerstage-left-primary") then "centerstage-left-primary"
+             elif $left | index("centerstage-left-secondary") then "centerstage-left-secondary"
+             elif .class == "obsidian" then "centerstage-left-primary"
+             else "centerstage-left-secondary" end) as $tag |
+            select($left != [$tag]) | [.address, $tag] | @tsv' <<< "$CENTERSTAGE_CLIENTS")
+    fi
+    if [[ "$zone" == left && "$left_mode" != single ]]; then
         read -r zone_x zone_width tag <<< "$(get_left_subcolumn_dimensions primary)"
         while IFS= read -r addr; do
             [[ -n "$addr" ]] || continue

@@ -250,9 +250,15 @@ get_left_layout_mode() {
     # Force single mode in PBP mode (simpler layout for 4K half)
     is_pbp_mode && { echo "single"; return; }
 
-    local mode="single"
-    [[ -f "$LEFT_LAYOUT_FILE" ]] && mode=$(cat "$LEFT_LAYOUT_FILE")
-    echo "$mode"
+    # Keep the original file as a fallback for existing installations. Legacy
+    # callers already keep a dynamically scoped `workspace`; explicit callers
+    # can pass it without another compositor query.
+    local ws=${1:-${workspace:-}} file=$LEFT_LAYOUT_FILE mode="single"
+    if [[ "$ws" =~ ^[1-3]$ && -f "$LEFT_LAYOUT_FILE-$ws" ]]; then
+        file="$LEFT_LAYOUT_FILE-$ws"
+    fi
+    [[ -f "$file" ]] && mode=$(<"$file")
+    printf '%s\n' "$mode"
 }
 
 # Calculate right sidebar column width (for matching in left sidebar)
@@ -304,7 +310,9 @@ get_left_subcolumn_dimensions() {
     else
         # obsidian-grid / equal-split: primary (Obsidian) on left, secondary (grid) on right
         local usable_width=$(( left_width - GAP_IN ))
-        local prim_width=$(( usable_width * left_primary_ratio / 100 ))
+        local effective_ratio=$left_primary_ratio
+        [[ "$layout_mode" == equal-split ]] && effective_ratio=50
+        local prim_width=$(( usable_width * effective_ratio / 100 ))
         local sec_width=$(( usable_width - prim_width ))
         local second_x=$(( left_x + prim_width + GAP_IN ))
 

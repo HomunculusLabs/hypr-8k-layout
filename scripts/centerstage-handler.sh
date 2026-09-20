@@ -142,9 +142,9 @@ handle_window_open() {
     # Apps that should always go to left sidebar
     case "$class" in
         obsidian)
-            # Keep an explicitly chosen split orientation. PBP has no subcolumns.
-            if ! is_pbp_mode && [[ "$(get_left_layout_mode)" == single ]]; then
-                echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
+            # Preserve every explicit workspace choice; initialize only once.
+            if ! is_pbp_mode && [[ "$(get_left_layout_mode "$workspace")" == single && ! -f "$LEFT_LAYOUT_FILE-$workspace" ]]; then
+                ~/.config/hypr/scripts/centerstage-left-layout.sh "$workspace" --initialize || return
             fi
             ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
             apply_shrink_if_needed "$workspace"

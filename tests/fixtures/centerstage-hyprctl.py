@@ -53,8 +53,15 @@ elif args[0] == "eval":
 hl = {dsp={window={}}}
 function hl.get_window(selector)
     for _, w in ipairs(clients) do
-        if selector == "address:" .. w.address then return w end
+        if selector == "address:" .. w.address then
+            w.at.x, w.at.y = w.at[1], w.at[2]
+            w.size.x, w.size.y = w.size[1], w.size[2]
+            return w
+        end
     end
+end
+local function pixel(v)
+    if v >= 0 then return math.floor(v + 0.5) else return math.ceil(v - 0.5) end
 end
 for _, name in ipairs({"float", "resize", "move", "tag"}) do
     hl.dsp.window[name] = function(t) t.kind = name; return t end
@@ -65,8 +72,17 @@ function hl.dispatch(t)
     if t.kind == "focus" then active = t.window end
     local w = hl.get_window(t.window)
     if w then
-        if t.kind == "resize" then assert(w.floating, "unsafe tiled resize") end
-        if t.kind == "float" then w.floating = not w.floating end
+        if t.kind == "resize" then
+            assert(w.floating, "unsafe tiled resize")
+            local nx = w.at[1] + (w.size[1] - t.x) / 2
+            local ny = w.at[2] + (w.size[2] - t.y) / 2
+            w.at = {pixel(nx), pixel(ny)}
+            w.size = {pixel(nx + t.x) - pixel(nx), pixel(ny + t.y) - pixel(ny)}
+        elseif t.kind == "move" then
+            w.at = {t.x, t.y}
+        elseif t.kind == "float" then
+            w.floating = not w.floating
+        end
     end
     print(table.concat({t.kind, t.window or "", t.x or "", t.y or "", t.tag or ""}, "\t"))
 end
@@ -83,11 +99,15 @@ end
         if kind == "focus":
             active_state.write_text(client["address"])
         elif kind == "resize":
-            # Hyprland keeps floating-window centers while resizing; callers
-            # must restore the top-left anchor even when its target is unchanged.
-            client["at"] = [client["at"][0] + (client["size"][0] - int(x)) // 2,
-                            client["at"][1] + (client["size"][1] - int(y)) // 2]
-            client["size"] = [int(x), int(y)]
+            # CBox::round rounds both edges; a half-pixel edge crossing zero
+            # can grow the result by one pixel (std::round ties away from zero).
+            import math
+            def pixel(value):
+                return math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5)
+            nx = client["at"][0] + (client["size"][0] - int(x)) / 2
+            ny = client["at"][1] + (client["size"][1] - int(y)) / 2
+            client["at"] = [pixel(nx), pixel(ny)]
+            client["size"] = [pixel(nx + int(x)) - pixel(nx), pixel(ny + int(y)) - pixel(ny)]
         elif kind == "move":
             client["at"] = [int(x), int(y)]
         elif kind == "float":

@@ -64,6 +64,28 @@ class LayoutTest(unittest.TestCase):
         self.clients.write_text(json.dumps(clients))
         self.log.write_text("")
 
+    def test_center_preserving_resize_does_not_grow_at_screen_origin(self):
+        self.state.joinpath("centerstage-left-layout").write_text("equal-split")
+        self.state.joinpath("centerstage-center-width").write_text("3000")
+        self.seed([client("0xa1", zone="left-secondary", at=[80, 100], size=[669, 1960])])
+        self.run_script("centerstage-retile.sh", "left", "1")
+        after = json.loads(self.clients.read_text())[0]
+        self.assertEqual(after["size"], [1030, 1960], "avoid CBox edge rounding to 1031")
+        self.assertEqual(after["at"], [1210, 100])
+        self.assertEqual(len(self.calls("eval")), 1)
+
+    def test_retile_reconciles_left_tags_with_destination_workspace_mode(self):
+        for mode, old_zone, new_zone in (("obsidian-grid", "left", "left-secondary"),
+                                         ("single", "left-primary", "left")):
+            with self.subTest(mode=mode):
+                self.state.joinpath("centerstage-left-layout-2").write_text(mode)
+                self.seed([client("0xa1", zone=old_zone, workspace=2)])
+                self.run_script("centerstage-retile.sh", "left", "2")
+                after = json.loads(self.clients.read_text())[0]
+                self.assertIn("centerstage-" + new_zone, after["tags"])
+                self.assertNotEqual(after["at"], [0, 0], "workspace/PIP transfers must not strand left windows")
+                self.assertEqual(len(self.calls("eval")), 1)
+
     def test_pbp_right_zone_stays_inside_its_4k_viewport(self):
         self.state.joinpath("centerstage-pbp-mode").write_text("on")
         self.seed([client("0xa1")])

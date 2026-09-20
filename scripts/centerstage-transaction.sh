@@ -44,7 +44,16 @@ centerstage_place() {
     local old_x old_y old_width old_height geometry=""
     read -r old_x old_y old_width old_height <<< "${CS_GEOMETRY[$addr]}"
     if [[ "$width $height" != "$old_width $old_height" || "${CS_FLOATING[$addr]}" != true ]]; then
-        geometry+="hl.dispatch(hl.dsp.window.resize({x=$width,y=$height,exact=true,window='address:$addr'})) "
+        # Center-preserving resize can cross the origin on a half pixel.
+        # CBox rounds both edges away from zero, then grows the size by 1px.
+        # Pre-position only when needed; every step stays in this one batch.
+        geometry+="local at, size = w.at, w.size
+            local safe_x = math.max(at.x, math.ceil(($width - size.x) / 2))
+            local safe_y = math.max(at.y, math.ceil(($height - size.y) / 2))
+            if safe_x ~= at.x or safe_y ~= at.y then
+                hl.dispatch(hl.dsp.window.move({x=safe_x,y=safe_y,relative=false,window='address:$addr'}))
+            end
+            hl.dispatch(hl.dsp.window.resize({x=$width,y=$height,relative=false,window='address:$addr'})) "
     fi
     # Floating resize preserves the center, not the top-left corner. Always
     # restore the anchor after a resize, even if the requested position matches.
@@ -145,15 +154,21 @@ centerstage_verify() {
     }
     for addr in "${!CS_EXPECTED_X[@]}"; do
         expected="${CS_EXPECTED_X[$addr]} ${CS_EXPECTED_Y[$addr]} ${CS_EXPECTED_WIDTH[$addr]} ${CS_EXPECTED_HEIGHT[$addr]} ${CS_WORKSPACE[$addr]}"
-        actual=$(jq -r --arg addr "$addr" '
+        actual=$(jq -r --arg addr "$addr" --arg tags "${CS_TAGS[$addr]}" '
+            def zone_tags: map(select(test("^centerstage-(left(-(primary|secondary))?|center|right(-[1-9][0-9]*)?)$"))) | sort;
             .[] | select(.address == $addr) |
-            [.at[0], .at[1], .size[0], .size[1], .workspace.id] | @tsv
+            [.at[0], .at[1], .size[0], .size[1], .workspace.id,
+             (((.tags // []) | zone_tags) == ($tags | split(" ") | zone_tags))] | @tsv
         ' <<< "$clients" | head -n 1)
         if [[ -z "$actual" ]]; then
             printf 'Centerstage verification failed: target %s is missing\n' "$addr" >&2
             return 1
         fi
-        read -r actual_x actual_y actual_width actual_height actual_workspace <<< "$actual"
+        read -r actual_x actual_y actual_width actual_height actual_workspace tags_match <<< "$actual"
+        if [[ "$tags_match" != true ]]; then
+            printf 'Centerstage verification failed: target %s has different zone tags\n' "$addr" >&2
+            return 1
+        fi
         if [[ "$actual_x $actual_y $actual_width $actual_height $actual_workspace" != "$expected" ]]; then
             printf 'Centerstage verification failed: target %s expected [%s], got [%s]\n' \
                 "$addr" "$expected" "$actual_x $actual_y $actual_width $actual_height $actual_workspace" >&2

@@ -68,6 +68,31 @@ class HandlerTest(unittest.TestCase):
         self.assertEqual(self.state.joinpath("centerstage-left-layout").read_text(), "grid-obsidian")
         self.assertIn("centerstage-left-primary", json.loads(self.clients.read_text())[0]["tags"])
 
+    def test_obsidian_respects_explicit_single_layout(self):
+        self.state.joinpath("centerstage-left-layout").write_text("single")
+        self.state.joinpath("centerstage-left-layout-1").write_text("single")
+        self.seed([client("0xa1", tags=[], **{"class": "obsidian"})])
+        self.set_events("openwindow>>a1,1,obsidian,test\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(self.state.joinpath("centerstage-left-layout").read_text(), "single")
+        self.assertEqual(self.state.joinpath("centerstage-left-layout-1").read_text(), "single")
+        self.assertIn("centerstage-left", json.loads(self.clients.read_text())[0]["tags"])
+
+    def test_obsidian_initialization_migrates_only_its_workspaces_left_windows(self):
+        self.state.joinpath("centerstage-left-layout").write_text("single")
+        other = client("0xb1", zone="left", workspace=2, at=[80, 100], size=[2380, 1960])
+        self.seed([client("0xa1", zone="left"),
+                   client("0xa2", tags=[], **{"class": "obsidian"}), other])
+        self.set_events("openwindow>>a2,1,obsidian,test\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(self.state.joinpath("centerstage-left-layout").read_text(), "single")
+        after = json.loads(self.clients.read_text())
+        self.assertIn("centerstage-left-secondary", after[0]["tags"])
+        self.assertIn("centerstage-left-primary", after[1]["tags"])
+        self.assertEqual(after[0]["size"], [1140, 1960])
+        self.assertEqual(after[2], other)
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
     def test_obsidian_in_pbp_uses_the_available_single_left_zone(self):
         self.state.joinpath("centerstage-pbp-mode").write_text("on")
         self.seed([client("0xa1", tags=[], **{"class": "obsidian"})])
