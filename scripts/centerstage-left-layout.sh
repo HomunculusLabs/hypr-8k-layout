@@ -20,12 +20,12 @@ migrate_to_split() {
     while IFS= read -r addr; do
         [[ -z "$addr" ]] && continue
         local class=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$addr\") | .class")
-        hyprctl dispatch focuswindow "address:$addr"
-        hyprctl dispatch tagwindow -- "-centerstage-left"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left"
         if [[ "$class" == "obsidian" ]]; then
-            hyprctl dispatch tagwindow "+centerstage-left-primary"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary"
         else
-            hyprctl dispatch tagwindow "+centerstage-left-secondary"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary"
         fi
     done < <(get_zone_windows "centerstage-left" "$workspace")
 }
@@ -35,9 +35,9 @@ migrate_to_single() {
     for tag in "centerstage-left-primary" "centerstage-left-secondary"; do
         while IFS= read -r addr; do
             [[ -z "$addr" ]] && continue
-            hyprctl dispatch focuswindow "address:$addr"
-            hyprctl dispatch tagwindow -- "-$tag"
-            hyprctl dispatch tagwindow "+centerstage-left"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-$tag"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left"
         done < <(hyprctl clients -j | jq -r \
             ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"$tag\")) != null) | .address")
     done
