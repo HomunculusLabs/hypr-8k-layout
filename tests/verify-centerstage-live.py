@@ -98,7 +98,8 @@ def main():
         p = ROOT / "state" / name
         assert not p.exists() or p.read_text().strip() != "on", "normal workspace mode required"
     focus_before = json.loads(run("hyprctl", "activewindow", "-j"))["address"]
-    paths = [ROOT / "state/centerstage-center-width", ROOT / "state/centerstage-center-height-3"]
+    paths = [ROOT / "state/centerstage-center-width", ROOT / "state/centerstage-center-height-3",
+             ROOT / "state/centerstage-left-layout-3"]
     original = {p: p.read_bytes() if p.exists() else None for p in paths}
     written = dict(original)
     autosave = capture_autosave_state()
@@ -182,13 +183,33 @@ def main():
                                any(w["address"] == remaining_addr and w["size"][1] == 1960 for w in ws))
         center = next(w for w in closed_state if w["address"] == center_addr)
         assert center["size"] == [width, height], "closing a sidebar window reset the chosen center height"
-        mode = run("bash", "-c", 'source "$HOME/.config/hypr/scripts/centerstage-lib.sh"; get_left_layout_mode')
-        if mode != "single":
-            run(str(ROOT / "scripts/centerstage-move.sh"), "left-primary", remaining_addr)
-            run(str(ROOT / "scripts/centerstage-swap-primary-center.sh"), "3")
-            promoted = next(w for w in query() if w["address"] == remaining_addr)
-            assert "centerstage-center" in promoted["tags"] and promoted["size"] == [width, height]
-            results["primary_promotion_verified"] = True
+        mode = run("bash", "-c", 'source "$HOME/.config/hypr/scripts/centerstage-lib.sh"; get_left_layout_mode 3')
+        order = ("single", "obsidian-grid", "grid-obsidian", "equal-split")
+        assert mode in order, "unrecognized left layout; refusing to change it"
+        run(str(ROOT / "scripts/centerstage-move.sh"), "left", remaining_addr)
+        cycles = []
+        for _ in order:
+            expected_mode = order[(order.index(mode) + 1) % len(order)]
+            started = time.perf_counter()
+            run(str(ROOT / "scripts/centerstage-left-layout.sh"), "3")
+            mode_data = paths[2].read_bytes()
+            written[paths[2]] = mode_data
+            mode = mode_data.decode().strip()
+            assert mode == expected_mode, (mode, expected_mode)
+            left = next(w for w in query() if w["address"] == remaining_addr)
+            assert all(size > 0 for size in left["size"])
+            assert left["at"][0] >= 80 and left["at"][0] + left["size"][0] <= (7680 - width) // 2 - 100
+            assert ("centerstage-left" if mode == "single" else "centerstage-left-secondary") in left["tags"]
+            cycles.append({"mode": mode, "command_ms": round((time.perf_counter() - started) * 1000, 2)})
+        results["left_layout_cycle_verified"] = cycles
+        if mode == "single":
+            run(str(ROOT / "scripts/centerstage-left-layout.sh"), "3")
+            written[paths[2]] = paths[2].read_bytes()
+        run(str(ROOT / "scripts/centerstage-move.sh"), "left-primary", remaining_addr)
+        run(str(ROOT / "scripts/centerstage-swap-primary-center.sh"), "3")
+        promoted = next(w for w in query() if w["address"] == remaining_addr)
+        assert "centerstage-center" in promoted["tags"] and promoted["size"] == [width, height]
+        results["primary_promotion_verified"] = True
         after = {w["address"]: w for w in query()}
         for w in before:
             assert w["address"] in after, "a preexisting window closed during verification"

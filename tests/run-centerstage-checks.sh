@@ -21,7 +21,7 @@ done
 for test in tests/test-centerstage-{config,migration,pip-workspaces,pip-workspace-edge-cases}.sh; do
     bash "$test"
 done
-for script in scripts/centerstage-{lib,transaction,plan,move,retile,reflow,swap,swap-primary-center,resize,height,handler}.sh; do
+for script in scripts/centerstage-{lib,transaction,plan,move,retile,reflow,swap,swap-primary-center,resize,height,left-layout,handler}.sh; do
     bash -n "$script"
 done
 luac -p looknfeel.lua

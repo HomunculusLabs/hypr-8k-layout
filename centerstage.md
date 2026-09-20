@@ -48,9 +48,10 @@ events:
 
 - First window in a workspace goes to the center.
 - Next windows go to the right sidebar until full, then to left.
-- Obsidian goes to left-primary, enabling `obsidian-grid` only when no split
-  layout is selected; an existing split orientation is preserved. In PBP mode
-  it uses the available single left zone.
+- Obsidian goes left, initializing `obsidian-grid` only on a workspace with
+  no explicit choice and no existing split. Existing left windows migrate
+  with it; explicitly chosen single/split modes and other workspaces are
+  preserved. In PBP mode it uses the available single left zone.
 - Nautilus always goes to the left sidebar.
 - Placement never explicitly refocuses the new window, including background
   launches. Ready windows have no initialization delay; not-yet-mapped windows
@@ -86,8 +87,12 @@ The active `scripts/` entrypoints for retile, move, and directional swap share
 - Fullscreen, hidden, pinned, screensaver, and game windows are excluded from
   these automatic layout transactions. A changed workspace or zone membership
   between planning and application invalidates that window's queued updates.
-- Width/height controls and primary/center swaps use the shared transaction
-  lock too. Older PIP and alternate-layout helpers retain their own behavior.
+- Width/height controls, left-layout cycling, and primary/center swaps use the
+  shared transaction lock too. Older PIP and alternate-layout helpers retain
+  their own behavior.
+- A floating resize that would cross the screen origin is pre-positioned
+  within the same batch. This avoids Hyprland's one-pixel edge-rounding growth
+  without weakening geometry verification or displaying an intermediate frame.
 
 `looknfeel.lua` sets a local non-overshooting ease-out curve, 240ms opening and
 movement, 160ms closing/fades, and a 300ms workspace slide/fade over only 8% of
@@ -107,9 +112,10 @@ interaction. `--live` additionally requires an unused, inactive workspace 3,
 normal (non-PIP/PBP) mode, and a single 7680x2160 scale-1 display. It restarts
 the handler, waits for the event listener to be ready, creates three uniquely
 identified temporary terminals, and exercises automatic placement, background
-closes, sizing, and primary promotion when split mode is enabled. It checks
+closes, sizing, all four left-layout modes, and primary promotion. It checks
 that existing windows and focus remain unchanged. The test temporarily pauses
-autosave and changes width/height test settings, then removes its probes,
+autosave and changes width/height and workspace-3 left-layout test settings,
+then removes its probes,
 restores settings, and resumes autosave. Avoid changing windows or layout
 settings during this brief live test; concurrent edits cause a failure rather
 than being silently overwritten. Latencies include application startup and
@@ -141,11 +147,24 @@ not compositor frame rate.
 
 ### Left sidebar modes
 
-Toggled by `~/.config/hypr/scripts/centerstage-left-layout.sh`:
+Toggled by `~/.config/hypr/scripts/centerstage-left-layout.sh [workspace]`:
 
-- `single`: all left windows share one column (tag `centerstage-left`).
-- `obsidian-grid`: Obsidian is primary, other windows are secondary.
-- `equal-split`: same as split, but no app-based routing changes.
+- `single`: all left windows use the sidebar's adaptive grid.
+- `obsidian-grid`: Obsidian is primary on the left, other windows are secondary.
+- `grid-obsidian`: secondary grid on the left, primary on the right.
+- `equal-split`: primary and secondary each receive half the usable width,
+  without overwriting the saved custom ratio.
+
+The cycle follows the order above. Tag migration and geometry updates share
+one guarded compositor batch, without changing focus. The selected mode is
+saved in `state/centerstage-left-layout-N` only after verifying geometry and
+zone tags; a stale target cancels the group. The original shared
+`state/centerstage-left-layout` remains the fallback for workspaces with no
+explicit choice. PBP keeps its fixed single layout and rejects cycling.
+
+The handler's `--initialize` option only enables an unconfigured split;
+it rechecks the preference under the layout lock instead of cycling a choice
+that the user may have made while it waited.
 
 Primary/secondary width is controlled by
 `~/.config/hypr/scripts/centerstage-left-ratio.sh` with presets 50/60/70/80.
