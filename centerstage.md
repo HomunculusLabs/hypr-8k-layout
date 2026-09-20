@@ -8,7 +8,7 @@ are floated and positioned by scripts in `~/.config/hypr/scripts/`.
 
 - Active only on workspaces 1-3.
 - Relies on Hyprland tags such as `centerstage-center` and `centerstage-right`.
-- Uses `hyprctl`, `jq`, `socat`, and `notify-send`.
+- Uses `hyprctl`, `jq`, Python 3, `flock`, and `notify-send`.
 - Geometry is tuned for a 7680x2160 display with fixed gaps.
 
 ## Zones and tags
@@ -48,8 +48,16 @@ events:
 
 - First window in a workspace goes to the center.
 - Next windows go to the right sidebar until full, then to left.
-- Obsidian goes to left-primary and sets left split mode to `obsidian-grid`.
+- Obsidian goes to left-primary, enabling `obsidian-grid` only when no split
+  layout is selected; an existing split orientation is preserved. In PBP mode
+  it uses the available single left zone.
 - Nautilus always goes to the left sidebar.
+- Placement never explicitly refocuses the new window, including background
+  launches. Ready windows have no initialization delay; not-yet-mapped windows
+  receive a bounded retry.
+- The handler remembers window workspaces and follows `movewindowv2` events.
+  Closing a background window reflows that workspace in one transaction, not
+  whichever workspace is currently focused.
 
 Retiling is done by `~/.config/hypr/scripts/centerstage-retile.sh`, which:
 
@@ -78,8 +86,8 @@ The active `scripts/` entrypoints for retile, move, and directional swap share
 - Fullscreen, hidden, pinned, screensaver, and game windows are excluded from
   these automatic layout transactions. A changed workspace or zone membership
   between planning and application invalidates that window's queued updates.
-- The handler and other legacy sizing/PIP helpers retain their own behavior;
-  not every legacy helper participates in the new lock.
+- Width/height controls and primary/center swaps use the shared transaction
+  lock too. Older PIP and alternate-layout helpers retain their own behavior.
 
 `looknfeel.lua` sets a local non-overshooting ease-out curve, 240ms opening and
 movement, 160ms closing/fades, and a 300ms workspace slide/fade over only 8% of
@@ -87,9 +95,32 @@ screen width. Blur remains enabled with two passes at size 6. Opacity, colors,
 monitor mode, and keybindings are unchanged. Motion/blur tuning and the layout
 pipeline are separate commits so either can be reverted independently.
 
-Run the isolated regressions (no desktop interaction):
+Run everything with one command:
 
 ```sh
+~/.config/hypr/tests/run-centerstage-checks.sh
+~/.config/hypr/tests/run-centerstage-checks.sh --live
+```
+
+The default is isolated regressions plus syntax checks, with no desktop
+interaction. `--live` additionally requires an unused, inactive workspace 3,
+normal (non-PIP/PBP) mode, and a single 7680x2160 scale-1 display. It restarts
+the handler, waits for the event listener to be ready, creates three uniquely
+identified temporary terminals, and exercises automatic placement, background
+closes, sizing, and primary promotion when split mode is enabled. It checks
+that existing windows and focus remain unchanged. The test temporarily pauses
+autosave and changes width/height test settings, then removes its probes,
+restores settings, and resumes autosave. Avoid changing windows or layout
+settings during this brief live test; concurrent edits cause a failure rather
+than being silently overwritten. Latencies include application startup and
+placement, not frame-rate measurements.
+
+Individual isolated regressions:
+
+```sh
+python3 tests/test-centerstage-controls.py -v
+python3 tests/test-centerstage-live-runner.py -v
+python3 tests/test-centerstage-handler.py -v
 python3 tests/test-centerstage-smoothness.py -v
 python3 tests/test-centerstage-interactions.py -v
 python3 tests/test-centerstage-motion.py -v
@@ -150,6 +181,18 @@ Center window sizes are controlled by:
 
 - `centerstage-resize.sh` (width presets 1920, 2200, 2560, 3000, 3840)
 - `centerstage-height.sh` (height presets 1080, 1200, 1400, 1600, 1800, 1960)
+
+Width cycling follows the live center region, preserves sidebar grids, and
+keeps the existing shared width preference. Width cycling is unavailable in
+fixed-width PIP/PBP mode. Height is saved per workspace in
+`state/centerstage-center-height-N`; absent/invalid values use the original
+full-height layout. Chosen height survives ordinary retile, movement, and
+close-triggered reflow. Both controls publish their pending state only after
+reading back the requested geometry; an IPC failure or refused/stale resize
+returns an error without saving the new preference. They also accept an
+optional workspace ID for targeted background operation. Primary/center
+promotion uses one batch and only deliberately changes focus when operating
+on the currently active workspace.
 
 ## PIP/PBP-ready workspace mode
 
