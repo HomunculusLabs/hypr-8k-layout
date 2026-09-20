@@ -55,17 +55,26 @@ apply_shrink_if_needed() {
 handle_window_open() {
     local addr="$1"
 
-    # Small delay to let window fully initialize
-    sleep 0.1
-
-    # Get window info
-    local window_info=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$addr\")")
+    # The open event normally arrives with usable geometry. Retry only when
+    # mapping has not completed instead of adding latency to every launch.
+    local clients window_info attempt
+    [[ "$addr" =~ ^0x[[:xdigit:]]+$ ]] || return
+    for ((attempt = 0; attempt < 5; attempt++)); do
+        clients=$(hyprctl clients -j) || return
+        window_info=$(jq -c --arg addr "$addr" '
+            .[] | select(.address == $addr and .mapped != false and
+                         (.size[0] // 0) > 0 and (.size[1] // 0) > 0)' <<< "$clients") || return
+        [[ -n "$window_info" ]] && break
+        [[ "$attempt" -lt 4 ]] && sleep 0.02
+    done
     if [[ -z "$window_info" ]]; then
         echo "DEBUG: Window $addr not found"
         return
     fi
 
     local workspace=$(echo "$window_info" | jq -r ".workspace.id")
+    [[ "$workspace" =~ ^-?[0-9]+$ ]] || return
+    WINDOW_WORKSPACES[$addr]=$workspace
     local floating=$(echo "$window_info" | jq -r ".floating")
     local class=$(echo "$window_info" | jq -r ".class")
     local pid=$(echo "$window_info" | jq -r ".pid")
@@ -101,8 +110,9 @@ handle_window_open() {
 
     # Skip ANY window that shares PID with another existing window
     # (child windows, popups, dialogs from same app)
-    local other_windows_same_pid=$(hyprctl clients -j | jq -r \
-        "[.[] | select(.pid == $pid and .address != \"$addr\")] | length")
+    local other_windows_same_pid
+    other_windows_same_pid=$(jq -r --argjson pid "$pid" --arg addr "$addr" \
+        '[.[] | select(.pid == $pid and .address != $addr)] | length' <<< "$clients")
     if [[ "$other_windows_same_pid" -gt 0 ]]; then
         echo "DEBUG: Skipping window - shares PID $pid with existing window (likely popup/child)"
         return
@@ -116,8 +126,8 @@ handle_window_open() {
     local has_tag=$(echo "$window_info" | jq -r '.tags // [] | map(select(startswith("centerstage-"))) | length')
     [[ "$has_tag" -gt 0 ]] && { echo "DEBUG: already has centerstage tag, skipping"; return; }
 
-    # Focus the new window first
-    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+    # Placement uses an explicit address; leave focus to the compositor/user.
+    # Refocusing here steals focus back after an app opens on another workspace.
 
     # PIP-ready mode maps one complete Centerstage zone to each workspace.
     if is_pip_workspace_mode; then
@@ -132,9 +142,11 @@ handle_window_open() {
     # Apps that should always go to left sidebar
     case "$class" in
         obsidian)
-            echo "DEBUG: Obsidian detected, switching to obsidian-grid layout"
-            echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
-            ~/.config/hypr/scripts/centerstage-move.sh left-primary "$addr"
+            # Keep an explicitly chosen split orientation. PBP has no subcolumns.
+            if ! is_pbp_mode && [[ "$(get_left_layout_mode)" == single ]]; then
+                echo "obsidian-grid" > "$LEFT_LAYOUT_FILE"
+            fi
+            ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
             apply_shrink_if_needed "$workspace"
             return
             ;;
@@ -146,19 +158,21 @@ handle_window_open() {
             ;;
     esac
 
-    # Count existing center-stage windows in this workspace
-    local center_count=$(count_zone_windows "centerstage-center" "$workspace")
-    local right_count=$(count_zone_windows "centerstage-right" "$workspace")
-
-    # Count left sidebar (including sub-columns in split mode)
+    # Reuse the routing snapshot instead of querying the compositor per zone.
+    local center_count right_count prim_count sec_count single_count left_count
+    read -r center_count right_count prim_count sec_count single_count < <(
+        jq -r --argjson workspace "$workspace" '
+            map(select(.workspace.id == $workspace)) as $windows |
+            ["centerstage-center", "centerstage-right", "centerstage-left-primary",
+             "centerstage-left-secondary", "centerstage-left"] |
+            map(. as $tag | [$windows[] | select((.tags // []) | index($tag))] | length) |
+            @tsv' <<< "$clients"
+    )
     local layout_mode=$(get_left_layout_mode)
-    local left_count
     if [[ "$layout_mode" != "single" ]]; then
-        local prim_count=$(count_zone_windows "centerstage-left-primary" "$workspace")
-        local sec_count=$(count_zone_windows "centerstage-left-secondary" "$workspace")
         left_count=$((prim_count + sec_count))
     else
-        left_count=$(count_zone_windows "centerstage-left" "$workspace")
+        left_count=$single_count
     fi
 
     echo "DEBUG: center=$center_count left=$left_count right=$right_count layout=$layout_mode"
@@ -185,31 +199,14 @@ handle_window_open() {
     apply_shrink_if_needed "$workspace"
 }
 
-# Handle window close - retile all zones
+# A close event contains only the address, so retain the last known workspace.
+# Do not guess from activeworkspace: background closes must not rearrange it.
+declare -A WINDOW_WORKSPACES=()
 handle_window_close() {
-    # Small delay for Hyprland to update state
-    sleep 0.1
-
-    local workspace=$(hyprctl activeworkspace -j | jq -r .id)
-
-    if is_pip_workspace_mode; then
-        ~/.config/hypr/scripts/centerstage-retile.sh center 1
-        ~/.config/hypr/scripts/centerstage-retile.sh right 2
-        ~/.config/hypr/scripts/centerstage-retile.sh left 3
-        return
-    fi
-
-    # Only handle workspaces 1-3
-    [[ "$workspace" -gt 3 ]] && return
-    [[ "$workspace" -lt 1 ]] && return
-
-    echo "DEBUG: Window closed on workspace $workspace, retiling zones"
-
-    # Retile all zones using the retile script (now with grid support)
-    ~/.config/hypr/scripts/centerstage-retile.sh left "$workspace"
-    ~/.config/hypr/scripts/centerstage-retile.sh right "$workspace"
-    ~/.config/hypr/scripts/centerstage-retile.sh center "$workspace"
-
+    local addr=$1 workspace=${WINDOW_WORKSPACES[$1]:-}
+    unset 'WINDOW_WORKSPACES[$addr]'
+    [[ "$workspace" =~ ^[1-3]$ ]] || return 0
+    "$HOME/.config/hypr/scripts/centerstage-reflow.sh" "$workspace"
     apply_shrink_if_needed "$workspace"
 }
 
@@ -227,8 +224,31 @@ if [[ ! -S "$SOCKET" ]]; then
     exit 1
 fi
 
-# Listen to Hyprland socket for window events using socat
-socat -U - "UNIX-CONNECT:$SOCKET" | while read -r line; do
+# Connect before taking the initial client snapshot so no event can arrive
+# between the snapshot and the event listener starting.
+if [[ "${1:-}" != "--event-fd" ]]; then
+    exec python3 "$HOME/.config/hypr/scripts/centerstage-listen.py" \
+        --socket "$SOCKET" --handler "$0"
+fi
+
+if [[ -z "${2:-}" || ! "${2}" =~ ^[0-9]+$ ]]; then
+    echo "Invalid event socket fd"
+    exit 1
+fi
+EVENT_FD=$2
+if ! { true <&"$EVENT_FD"; }; then
+    echo "Could not read event socket fd: $EVENT_FD"
+    exit 1
+fi
+
+# Seed existing windows so their first close can be routed without polling.
+while IFS=$'\t' read -r addr workspace; do
+    [[ "$addr" =~ ^0x[[:xdigit:]]+$ && "$workspace" =~ ^-?[0-9]+$ ]] || continue
+    WINDOW_WORKSPACES[$addr]=$workspace
+done < <(hyprctl clients -j | jq -r '.[] | [.address, .workspace.id] | @tsv')
+
+# Read directly from the pre-connected Hyprland socket.
+while IFS= read -r line <&"$EVENT_FD"; do
     # Parse event: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
     if [[ "$line" == openwindow\>\>* ]]; then
         # Extract address (first field after >>)
@@ -237,6 +257,14 @@ socat -U - "UNIX-CONNECT:$SOCKET" | while read -r line; do
         handle_window_open "$addr"
     # Parse event: closewindow>>ADDRESS
     elif [[ "$line" == closewindow\>\>* ]]; then
-        handle_window_close
+        addr="0x${line#closewindow>>}"
+        [[ "$addr" =~ ^0x[[:xdigit:]]+$ ]] && handle_window_close "$addr"
+    elif [[ "$line" == movewindowv2\>\>* ]]; then
+        IFS=, read -r raw_addr workspace _ <<< "${line#movewindowv2>>}"
+        addr="0x$raw_addr"
+        if [[ "$addr" =~ ^0x[[:xdigit:]]+$ && "$workspace" =~ ^-?[0-9]+$ ]]; then
+            WINDOW_WORKSPACES[$addr]=$workspace
+        fi
     fi
+    :
 done
