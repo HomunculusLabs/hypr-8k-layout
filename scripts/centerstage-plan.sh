@@ -4,6 +4,7 @@
 centerstage_plan_grid() {
     local tag=$1 workspace=$2 zone_x=$3 zone_width=$4
     local count cols rows cell_width cell_height x y i pos
+    local zone_height=$TOTAL_HEIGHT zone_y=$ZONE_Y center_height
     local -a windows
     mapfile -t windows < <(jq -r --arg tag "$tag" --argjson ws "$workspace" '
         [.[] | select(.workspace.id == $ws and ((.tags // []) | index($tag)))
@@ -13,7 +14,7 @@ centerstage_plan_grid() {
     count=${#windows[@]}
     [[ "$count" -gt 0 ]] || return 0
 
-    if [[ "$tag" == centerstage-right ]] && ! is_pip_workspace_mode; then
+    if [[ "$tag" == centerstage-right ]] && ! is_pip_workspace_mode && ! is_pbp_mode; then
         if [[ "$count" -lt 4 ]]; then
             zone_width=$((zone_width / 2))
         elif [[ "$count" -lt 7 ]]; then
@@ -23,15 +24,23 @@ centerstage_plan_grid() {
     fi
 
     if [[ "$tag" == centerstage-center ]]; then
+        local height_file=${CENTERSTAGE_HEIGHT_FILE:-$STATE_DIR/centerstage-center-height-$workspace}
+        [[ -f "$height_file" ]] && center_height=$(<"$height_file")
+        case "$center_height" in
+            1080|1200|1400|1600|1800|1960)
+                zone_height=$center_height
+                zone_y=$(((SCREEN_HEIGHT - zone_height) / 2))
+                ;;
+        esac
         read -r cols rows <<< "$(calculate_grid_center "$count")"
     else
         read -r cols rows <<< "$(calculate_grid "$count")"
     fi
     cell_width=$(((zone_width - (cols - 1) * GAP_IN) / cols))
-    cell_height=$(((TOTAL_HEIGHT - (rows - 1) * GAP_IN) / rows))
+    cell_height=$(((zone_height - (rows - 1) * GAP_IN) / rows))
     for i in "${!windows[@]}"; do
         x=$((zone_x + (i % cols) * (cell_width + GAP_IN)))
-        y=$((ZONE_Y + (i / cols) * (cell_height + GAP_IN)))
+        y=$((zone_y + (i / cols) * (cell_height + GAP_IN)))
         centerstage_place "${windows[$i]}" "$x" "$y" "$cell_width" "$cell_height" || return 1
         if [[ "$tag" == centerstage-right ]]; then
             for pos in {1..9}; do

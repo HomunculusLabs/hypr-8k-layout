@@ -1,59 +1,34 @@
 #!/bin/bash
-# centerstage-swap-primary-center.sh - Swap left-primary with center window
-#
-# Swaps tags between:
-#   - centerstage-left-primary window -> centerstage-center
-#   - centerstage-center window -> centerstage-left-primary
-#
-# Usage: centerstage-swap-primary-center.sh
-
+# Swap left-primary with one center cell without intermediate focus changes.
 source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
-
-workspace=$(hyprctl activeworkspace -j | jq -r .id)
-
-# Only work on workspaces 1-3
-[[ "$workspace" -gt 3 ]] && { notify-send "Center Stage" "Only available on workspaces 1-3"; exit 1; }
-
-# Check layout mode - swap only works in split modes
-layout_mode=$(get_left_layout_mode)
-[[ "$layout_mode" == "single" ]] && { notify-send "Center Stage" "Enable split mode first"; exit 1; }
-
-# Get left-primary window
-primary_addr=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-left-primary\")) != null) | .address" | head -1)
-
-# Get center window
-center_addr=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .address" | head -1)
-
-# Validate both windows exist
-[[ -z "$primary_addr" || "$primary_addr" == "null" ]] && { notify-send "Center Stage" "No window in left-primary"; exit 1; }
-[[ -z "$center_addr" || "$center_addr" == "null" ]] && { notify-send "Center Stage" "No window in center"; exit 1; }
-
-# Get window classes for notification
-primary_class=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$primary_addr\") | .class")
-center_class=$(hyprctl clients -j | jq -r ".[] | select(.address == \"$center_addr\") | .class")
-
-# Swap tags - remove old, add new
-
-# Primary window: remove left-primary, add center
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$primary_addr"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-primary"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center"
-
-# Center window: remove center, add left-primary
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-center"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary"
-
-# Small delay for tag application
-sleep 0.05
-
-# Retile both zones
-~/.config/hypr/scripts/centerstage-retile.sh left "$workspace"
-~/.config/hypr/scripts/centerstage-retile.sh center "$workspace"
-
-# Focus the window that is now in center (was primary)
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$primary_addr"
-
-notify-send "Center Stage" "Swapped: $primary_class <-> $center_class"
+source "$HOME/.config/hypr/scripts/centerstage-transaction.sh"
+centerstage_begin || exit 1
+active_workspace=$(hyprctl activeworkspace -j | jq -r '.id') || exit 1
+workspace=${1:-$active_workspace}
+[[ "$workspace" =~ ^[1-3]$ ]] || exit 1
+[[ "$(get_left_layout_mode)" != single ]] || exit 1
+read -r primary_addr center_addr < <(jq -r --argjson ws "$workspace" '
+    map(select(.workspace.id == $ws)) as $windows |
+    ["centerstage-left-primary", "centerstage-center"] |
+    map(. as $tag | [$windows[] | select((.tags // []) | index($tag))] |
+        sort_by([.at[1], .at[0]]) | first.address // "none") | @tsv' <<< "$CENTERSTAGE_CLIENTS")
+[[ "$primary_addr" =~ ^0x[[:xdigit:]]+$ && "$center_addr" =~ ^0x[[:xdigit:]]+$ ]] || exit 1
+[[ "$primary_addr" != "$center_addr" ]] || exit 1
+# A swap is a pair operation: never apply just one half of a stale snapshot.
+CENTERSTAGE_COMMANDS+=("if not cs_snapshot['$primary_addr'] or not cs_snapshot['$center_addr'] then return end")
+read -r x y width height <<< "${CS_GEOMETRY[$center_addr]}"
+centerstage_place "$primary_addr" "$x" "$y" "$width" "$height" || exit 1
+read -r x y width height <<< "${CS_GEOMETRY[$primary_addr]}"
+centerstage_place "$center_addr" "$x" "$y" "$width" "$height" || exit 1
+centerstage_tag "$primary_addr" -centerstage-left-primary || exit 1
+centerstage_tag "$primary_addr" +centerstage-center || exit 1
+centerstage_tag "$center_addr" -centerstage-center || exit 1
+centerstage_tag "$center_addr" +centerstage-left-primary || exit 1
+# Promotion deliberately focuses the new center, but a background workspace
+# operation must not drag the user away from their current workspace.
+if [[ "$workspace" == "$active_workspace" ]]; then
+    CENTERSTAGE_COMMANDS+=("if cs_snapshot['$primary_addr'] and cs_snapshot['$center_addr'] then
+        hl.dispatch(hl.dsp.focus({window='address:$primary_addr'}))
+    end")
+fi
+centerstage_commit

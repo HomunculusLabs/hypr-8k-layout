@@ -1,141 +1,47 @@
 #!/bin/bash
-# centerstage-resize.sh - Cycle center window through size presets
-#
-# Sizes: 2560 (QHD) → 3000 (Medium) → 3840 (4K) → 2560
-#
-# Usage: centerstage-resize.sh
-
-# Size presets: width, center_x, sidebar_width, sidebar_right_x
-# Calculated for 7680px width with 80px edge gaps and 100px inner gaps
-# Formula: center_x = (7680 - width) / 2
-#          sidebars = (7320 - center) / 2
-#          right_x = center_x + center + 100
-declare -A SIZES
-SIZES[1920]="1920 2880 2700 4900"   # 1080p - ultra focused
-SIZES[2200]="2200 2740 2560 5040"   # Small
-SIZES[2560]="2560 2560 2380 5220"   # QHD - default
-SIZES[3000]="3000 2340 2160 5440"   # Medium
-SIZES[3840]="3840 1920 1740 5860"   # 4K - large
-
-SIZE_ORDER=(1920 2200 2560 3000 3840)
-
-ZONE_Y=100
-TOTAL_HEIGHT=1960
-GAP_IN=100
-STATE_FILE="$HOME/.config/hypr/state/centerstage-sidebar-offset"
-
-# Get current workspace
-workspace=$(hyprctl activeworkspace -j | jq -r .id)
-
-# Only work on workspaces 1-3
-[[ "$workspace" -gt 3 ]] && { notify-send "Center Stage" "Only available on workspaces 1-3"; exit 1; }
-
-# Find center window in this workspace
-center_addr=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .address" | head -1)
-
-if [[ -z "$center_addr" ]]; then
-    notify-send "Center Stage" "No center window found"
+# Cycle center width without changing focus or flattening sidebar grids.
+source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
+source "$HOME/.config/hypr/scripts/centerstage-transaction.sh"
+source "$HOME/.config/hypr/scripts/centerstage-plan.sh"
+centerstage_begin || exit 1
+if is_pip_workspace_mode || is_pbp_mode; then
+    printf 'Centerstage: center width is fixed in PIP/PBP mode\n' >&2
+    notify-send "Center Stage" "Center width is fixed in PIP/PBP mode"
     exit 1
 fi
-
-# Get current center dimensions (preserve height and y position)
-current_width=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .size[0]")
-current_height=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .size[1]")
-current_y=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .at[1]")
-
-# Find next size in cycle
-next_size=""
-for i in "${!SIZE_ORDER[@]}"; do
-    if [[ "${SIZE_ORDER[$i]}" -eq "$current_width" ]]; then
-        next_idx=$(( (i + 1) % ${#SIZE_ORDER[@]} ))
-        next_size="${SIZE_ORDER[$next_idx]}"
-        break
-    fi
+workspace=${1:-$(hyprctl activeworkspace -j | jq -r '.id')}
+[[ "$workspace" =~ ^[1-3]$ ]] || exit 1
+mapfile -t centers < <(jq -r --argjson ws "$workspace" '
+    .[] | select(.workspace.id == $ws and ((.tags // []) | index("centerstage-center"))) | .address' <<< "$CENTERSTAGE_CLIENTS")
+[[ ${#centers[@]} -gt 0 ]] || exit 1
+read_state
+sizes=(1920 2200 2560 3000 3840)
+current=$(jq -r --argjson ws "$workspace" '
+    [.[] | select(.workspace.id == $ws and ((.tags // []) | index("centerstage-center")))] |
+    if length == 0 then empty
+    else (map(.at[0] + .size[0]) | max) - (map(.at[0]) | min)
+    end' <<< "$CENTERSTAGE_CLIENTS")
+[[ "$current" =~ ^[0-9]+$ ]] || exit 1
+next=${sizes[0]}
+for i in "${!sizes[@]}"; do
+    [[ "$current" == "${sizes[$i]}" ]] && next=${sizes[$(((i + 1) % ${#sizes[@]}))]}
 done
-
-# Default to first size if current not found
-[[ -z "$next_size" ]] && next_size="${SIZE_ORDER[0]}"
-
-# Save the new center width to state file
-echo "$next_size" > $HOME/.config/hypr/state/centerstage-center-width
-
-# Parse new dimensions (base values for symmetric sidebars)
-read -r new_width new_center_x base_sidebar_width base_right_x <<< "${SIZES[$next_size]}"
-
-# Read sidebar offset to preserve asymmetric balance
-sidebar_offset=0
-[[ -f "$STATE_FILE" ]] && sidebar_offset=$(cat "$STATE_FILE")
-
-# Apply offset to sidebar widths
-left_sidebar_width=$(( base_sidebar_width + sidebar_offset ))
-right_sidebar_width=$(( base_sidebar_width - sidebar_offset ))
-
-# Recalculate right_x based on center position
-new_right_x=$(( new_center_x + new_width + GAP_IN ))
-
-# Update center window (preserve current height and y position)
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact $new_width $current_height
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact $new_center_x $current_y
-
-# Update left sidebar windows
-left_windows=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-left\")) != null) | .address")
-
-count=0
-while IFS= read -r addr; do
-    [[ -n "$addr" ]] && ((count++))
-done <<< "$left_windows"
-
-if [[ "$count" -gt 0 ]]; then
-    if [[ "$count" -eq 1 ]]; then
-        win_height=$TOTAL_HEIGHT
-    else
-        total_gap=$(( (count - 1) * 100 ))
-        win_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
-    fi
-
-    i=0
-    while IFS= read -r addr; do
-        [[ -z "$addr" ]] && continue
-        y=$(( ZONE_Y + i * (win_height + 100) ))
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact "$left_sidebar_width" "$win_height"
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 80 "$y"
-        ((i++))
-    done <<< "$left_windows"
+# Plan against a private pending state file; publish only after successful IPC.
+width_target=$WIDTH_FILE
+pending=$(mktemp "$STATE_DIR/.centerstage-width.XXXXXX") || exit 1
+trap 'rm -f -- "$pending"' EXIT
+printf '%s\n' "$next" > "$pending" || exit 1
+WIDTH_FILE=$pending
+for zone in left right; do
+    centerstage_plan_zone "$zone" "$workspace" || exit 1
+done
+if [[ ${#centers[@]} -eq 1 ]]; then
+    read -r new_x new_width _ <<< "$(get_zone_dimensions center)"
+    read -r _ old_y _ old_height <<< "${CS_GEOMETRY[${centers[0]}]}"
+    centerstage_place "${centers[0]}" "$new_x" "$old_y" "$new_width" "$old_height" || exit 1
+else
+    centerstage_plan_zone center "$workspace" || exit 1
 fi
-
-# Update right sidebar windows
-right_windows=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-right\")) != null) | .address")
-
-count=0
-while IFS= read -r addr; do
-    [[ -n "$addr" ]] && ((count++))
-done <<< "$right_windows"
-
-if [[ "$count" -gt 0 ]]; then
-    if [[ "$count" -eq 1 ]]; then
-        win_height=$TOTAL_HEIGHT
-    else
-        total_gap=$(( (count - 1) * 100 ))
-        win_height=$(( (TOTAL_HEIGHT - total_gap) / count ))
-    fi
-
-    i=0
-    while IFS= read -r addr; do
-        [[ -z "$addr" ]] && continue
-        y=$(( ZONE_Y + i * (win_height + 100) ))
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact "$right_sidebar_width" "$win_height"
-        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact "$new_right_x" "$y"
-        ((i++))
-    done <<< "$right_windows"
-fi
-
-notify-send "Center Stage" "Center: ${next_size}px"
+centerstage_commit || exit 1
+centerstage_verify || exit 1
+mv -- "$pending" "$width_target"

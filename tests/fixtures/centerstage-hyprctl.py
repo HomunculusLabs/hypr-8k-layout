@@ -9,6 +9,13 @@ import sys
 state_path = Path(os.environ["CENTERSTAGE_TEST_CLIENTS"])
 clients = json.loads(state_path.read_text())
 args = sys.argv[1:]
+active_state = state_path.with_suffix(".active")
+active_address = os.environ.get("CENTERSTAGE_TEST_ACTIVE", "")
+active_file = os.environ.get("CENTERSTAGE_TEST_ACTIVE_FILE")
+if active_file:
+    active_address = Path(active_file).read_text().strip()
+elif active_state.exists():
+    active_address = active_state.read_text().strip()
 with Path(os.environ["CENTERSTAGE_TEST_LOG"]).open("a") as log:
     log.write(json.dumps(args) + "\n")
 
@@ -30,20 +37,19 @@ def lua(value):
 if args[0] in ("clients", "-j"):
     print(json.dumps(clients))
 elif args[0] in ("activewindow", "activeworkspace"):
-    active_address = os.environ.get("CENTERSTAGE_TEST_ACTIVE")
-    active_file = os.environ.get("CENTERSTAGE_TEST_ACTIVE_FILE")
     if args[0] == "activewindow" and active_file:
-        active_address = Path(active_file).read_text().strip()
         marker = os.environ.get("CENTERSTAGE_TEST_ACTIVE_QUERY_MARKER")
         if marker:
             Path(marker).write_text("queried\n")
     active = next((c for c in clients if c["address"] == active_address), {})
     print(json.dumps(active if args[0] == "activewindow" else active.get("workspace", {})))
 elif args[0] == "eval":
+    if os.environ.get("CENTERSTAGE_TEST_EVAL_FAIL") == "1":
+        sys.exit("injected IPC failure")
     changes = json.loads(os.environ.get("CENTERSTAGE_TEST_BEFORE_EVAL", "{}"))
     for item in clients:
         item.update(changes.get(item["address"], {}))
-    script = "local clients = " + lua(clients) + "\n" + r'''
+    script = "local active = " + lua("address:" + active_address) + "\nlocal clients = " + lua(clients) + "\n" + r'''
 hl = {dsp={window={}}}
 function hl.get_window(selector)
     for _, w in ipairs(clients) do
@@ -55,7 +61,9 @@ for _, name in ipairs({"float", "resize", "move", "tag"}) do
 end
 hl.dsp.focus = function(t) t.kind = "focus"; return t end
 function hl.dispatch(t)
-    local w = hl.get_window(t.window or "address:missing")
+    t.window = t.window or active
+    if t.kind == "focus" then active = t.window end
+    local w = hl.get_window(t.window)
     if w then
         if t.kind == "resize" then assert(w.floating, "unsafe tiled resize") end
         if t.kind == "float" then w.floating = not w.floating end
@@ -72,7 +80,9 @@ end
         client = next((c for c in clients if "address:" + c["address"] == selector), None)
         if client is None:
             continue
-        if kind == "resize":
+        if kind == "focus":
+            active_state.write_text(client["address"])
+        elif kind == "resize":
             # Hyprland keeps floating-window centers while resizing; callers
             # must restore the top-left anchor even when its target is unchanged.
             client["at"] = [client["at"][0] + (client["size"][0] - int(x)) // 2,

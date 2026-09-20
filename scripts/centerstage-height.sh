@@ -1,65 +1,30 @@
 #!/bin/bash
-# centerstage-height.sh - Cycle center window through height presets
-#
-# Heights: 1960 (Full) → 1600 (Comfortable) → 1200 (Compact) → 1960
-# Windows are vertically centered on screen
-#
-# Usage: centerstage-height.sh
-
-# Height presets: height, y_position (vertically centered)
-# Formula: y = (2160 - height) / 2
-declare -A HEIGHTS
-HEIGHTS[1080]="1080 540"    # 1080p - ultra focused
-HEIGHTS[1200]="1200 480"    # Compact
-HEIGHTS[1400]="1400 380"    # Medium
-HEIGHTS[1600]="1600 280"    # Comfortable
-HEIGHTS[1800]="1800 180"    # Slightly reduced
-HEIGHTS[1960]="1960 100"    # Full height (with gaps)
-
-HEIGHT_ORDER=(1080 1200 1400 1600 1800 1960)
-
-# Get current workspace
-workspace=$(hyprctl activeworkspace -j | jq -r .id)
-
-# Only work on workspaces 1-3
-[[ "$workspace" -gt 3 ]] && { notify-send "Center Stage" "Only available on workspaces 1-3"; exit 1; }
-
-# Find center window in this workspace
-center_addr=$(hyprctl clients -j | jq -r \
-    ".[] | select(.workspace.id == $workspace and .tags != null and (.tags | index(\"centerstage-center\")) != null) | .address" | head -1)
-
-if [[ -z "$center_addr" ]]; then
-    notify-send "Center Stage" "No center window found"
-    exit 1
+# Cycle a workspace's center-region height; preserve it through later reflows.
+source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
+source "$HOME/.config/hypr/scripts/centerstage-transaction.sh"
+source "$HOME/.config/hypr/scripts/centerstage-plan.sh"
+centerstage_begin || exit 1
+workspace=${1:-$(hyprctl activeworkspace -j | jq -r '.id')}
+[[ "$workspace" =~ ^[1-3]$ ]] || exit 1
+current=$(jq -r --argjson ws "$workspace" '
+    [.[] | select(.workspace.id == $ws and ((.tags // []) | index("centerstage-center")))] |
+    if length == 0 then empty else (map(.at[1] + .size[1]) | max) - (map(.at[1]) | min) end' <<< "$CENTERSTAGE_CLIENTS")
+[[ -n "$current" ]] || exit 1
+height_target="$STATE_DIR/centerstage-center-height-$workspace"
+if [[ -f "$height_target" ]]; then
+    saved=$(<"$height_target")
+    case "$saved" in 1080|1200|1400|1600|1800|1960) current=$saved ;; esac
 fi
-
-# Get current center dimensions
-current_height=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .size[1]")
-current_width=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .size[0]")
-current_x=$(hyprctl clients -j | jq -r \
-    ".[] | select(.address == \"$center_addr\") | .at[0]")
-
-# Find next height in cycle
-next_height=""
-for i in "${!HEIGHT_ORDER[@]}"; do
-    if [[ "${HEIGHT_ORDER[$i]}" -eq "$current_height" ]]; then
-        next_idx=$(( (i + 1) % ${#HEIGHT_ORDER[@]} ))
-        next_height="${HEIGHT_ORDER[$next_idx]}"
-        break
-    fi
+heights=(1080 1200 1400 1600 1800 1960)
+next=${heights[0]}
+for i in "${!heights[@]}"; do
+    [[ "$current" == "${heights[$i]}" ]] && next=${heights[$(((i + 1) % ${#heights[@]}))]}
 done
-
-# Default to first height if current not found
-[[ -z "$next_height" ]] && next_height="${HEIGHT_ORDER[0]}"
-
-# Parse new dimensions
-read -r new_height new_y <<< "${HEIGHTS[$next_height]}"
-
-# Update center window (preserve current width and x position)
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$center_addr"
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact $current_width $new_height
-"$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact $current_x $new_y
-
-notify-send "Center Stage" "Height: ${new_height}px"
+pending=$(mktemp "$STATE_DIR/.centerstage-height.XXXXXX") || exit 1
+trap 'rm -f -- "$pending"' EXIT
+printf '%s\n' "$next" > "$pending" || exit 1
+CENTERSTAGE_HEIGHT_FILE=$pending
+centerstage_plan_zone center "$workspace" || exit 1
+centerstage_commit || exit 1
+centerstage_verify || exit 1
+mv -- "$pending" "$height_target"

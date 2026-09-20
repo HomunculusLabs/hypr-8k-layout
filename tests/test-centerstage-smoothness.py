@@ -64,6 +64,14 @@ class LayoutTest(unittest.TestCase):
         self.clients.write_text(json.dumps(clients))
         self.log.write_text("")
 
+    def test_pbp_right_zone_stays_inside_its_4k_viewport(self):
+        self.state.joinpath("centerstage-pbp-mode").write_text("on")
+        self.seed([client("0xa1")])
+        self.run_script("centerstage-retile.sh", "right", "1")
+        window = json.loads(self.clients.read_text())[0]
+        self.assertGreaterEqual(window["at"][0], 3840 // 2)
+        self.assertLessEqual(window["at"][0] + window["size"][0], 3840 - 80)
+
     def test_resizing_a_cell_preserves_its_top_left_anchor(self):
         self.seed([client("0xa1", at=[6410, 100], size=[1190, 1960]), client("0xa2", position=2)])
         self.run_script("centerstage-retile.sh", "right", "1")

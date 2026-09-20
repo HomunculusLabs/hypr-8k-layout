@@ -39,6 +39,14 @@ class InteractionTest(unittest.TestCase):
                     continue
         self.fail("operation did not open the layout lock")
 
+    def test_directional_swap_cancels_if_one_member_leaves_the_workspace(self):
+        original = [client("0xa1", at=[6410, 100], size=[1190, 930]),
+                    client("0xa2", position=2, at=[6410, 1130], size=[1190, 930])]
+        self.seed(original)
+        self.env["CENTERSTAGE_TEST_BEFORE_EVAL"] = json.dumps({"0xa2": {"workspace": {"id": 2}}})
+        self.run_script("centerstage-swap.sh", "down")
+        self.assertEqual(json.loads(self.clients.read_text()), [original[0], dict(original[1], workspace={"id": 2})])
+
     def test_invalid_commands_are_non_destructive(self):
         original = [client("0xa1")]
         for script, args in (("centerstage-move.sh", ("invalid", "0xa1")),

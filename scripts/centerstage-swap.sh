@@ -59,6 +59,7 @@ else
 fi
 (( swap_idx != focused_idx )) || exit 0
 other=${windows[$swap_idx]}
+CENTERSTAGE_COMMANDS+=("if not cs_snapshot['$focused_addr'] or not cs_snapshot['$other'] then return end")
 read -r x y width height <<< "${CS_GEOMETRY[$other]}"
 centerstage_place "$focused_addr" "$x" "$y" "$width" "$height" || exit 1
 read -r x y width height <<< "${CS_GEOMETRY[$focused_addr]}"

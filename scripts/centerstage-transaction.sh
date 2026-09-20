@@ -16,6 +16,7 @@ centerstage_begin() {
          ((.title // "") | startswith("Battle.net"))))]' <<< "$CENTERSTAGE_CLIENTS") || return 1
     CENTERSTAGE_COMMANDS=()
     declare -gA CS_GEOMETRY=() CS_FLOATING=() CS_TAGS=() CS_ZONE_TAGS=() CS_WORKSPACE=()
+    declare -gA CS_EXPECTED_X=() CS_EXPECTED_Y=() CS_EXPECTED_WIDTH=() CS_EXPECTED_HEIGHT=()
     local addr floating x y width height workspace tags zone_tags
     while IFS=$'\t' read -r addr floating x y width height workspace tags zone_tags; do
         [[ "$addr" =~ ^0x[[:xdigit:]]+$ && "$workspace" =~ ^-?[0-9]+$ ]] || continue
@@ -35,6 +36,10 @@ centerstage_place() {
     [[ "$x" =~ ^-?[0-9]+$ && "$y" =~ ^-?[0-9]+$ ]] || return 1
     [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || return 1
     (( width > 0 && height > 0 )) || return 1
+    CS_EXPECTED_X[$addr]=$x
+    CS_EXPECTED_Y[$addr]=$y
+    CS_EXPECTED_WIDTH[$addr]=$width
+    CS_EXPECTED_HEIGHT[$addr]=$height
     [[ -n "${CS_GEOMETRY[$addr]:-}" ]] || return 0
     local old_x old_y old_width old_height geometry=""
     read -r old_x old_y old_width old_height <<< "${CS_GEOMETRY[$addr]}"
@@ -126,4 +131,33 @@ centerstage_commit() {
         printf 'Centerstage transaction failed: %s\n' "$reply" >&2
         return 1
     fi
+}
+
+centerstage_verify() {
+    local clients addr expected actual
+    clients=$(hyprctl clients -j) || {
+        printf 'Centerstage verification failed: unable to query clients\n' >&2
+        return 1
+    }
+    jq -e 'type == "array"' <<< "$clients" >/dev/null || {
+        printf 'Centerstage verification failed: invalid clients response\n' >&2
+        return 1
+    }
+    for addr in "${!CS_EXPECTED_X[@]}"; do
+        expected="${CS_EXPECTED_X[$addr]} ${CS_EXPECTED_Y[$addr]} ${CS_EXPECTED_WIDTH[$addr]} ${CS_EXPECTED_HEIGHT[$addr]} ${CS_WORKSPACE[$addr]}"
+        actual=$(jq -r --arg addr "$addr" '
+            .[] | select(.address == $addr) |
+            [.at[0], .at[1], .size[0], .size[1], .workspace.id] | @tsv
+        ' <<< "$clients" | head -n 1)
+        if [[ -z "$actual" ]]; then
+            printf 'Centerstage verification failed: target %s is missing\n' "$addr" >&2
+            return 1
+        fi
+        read -r actual_x actual_y actual_width actual_height actual_workspace <<< "$actual"
+        if [[ "$actual_x $actual_y $actual_width $actual_height $actual_workspace" != "$expected" ]]; then
+            printf 'Centerstage verification failed: target %s expected [%s], got [%s]\n' \
+                "$addr" "$expected" "$actual_x $actual_y $actual_width $actual_height $actual_workspace" >&2
+            return 1
+        fi
+    done
 }
