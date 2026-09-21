@@ -24,6 +24,8 @@ done
 for script in scripts/centerstage-{lib,transaction,plan,move,retile,reflow,swap,swap-primary-center,resize,height,left-layout,handler}.sh; do
     bash -n "$script"
 done
+bash -n scripts/hyprland-session-guard.sh
+bash tests/test-hyprland-session-guard.sh
 luac -p looknfeel.lua
 if "$live"; then
     python3 tests/verify-centerstage-live.py
