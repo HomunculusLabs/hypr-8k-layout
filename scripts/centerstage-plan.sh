@@ -77,7 +77,7 @@ centerstage_plan_zone() {
             (if $mode == "single" then "centerstage-left"
              elif $left | index("centerstage-left-primary") then "centerstage-left-primary"
              elif $left | index("centerstage-left-secondary") then "centerstage-left-secondary"
-             elif .class == "obsidian" then "centerstage-left-primary"
+             elif .class == "obsidian" or .class == "Mai Buddy" then "centerstage-left-primary"
              else "centerstage-left-secondary" end) as $tag |
             select($left != [$tag]) | [.address, $tag] | @tsv' <<< "$CENTERSTAGE_CLIENTS")
     fi
@@ -101,9 +101,34 @@ centerstage_change_zone() {
     [[ "$zone" =~ ^(left|left-primary|left-secondary|center|right)$ && "$workspace" =~ ^[1-3]$ ]] || return 1
     if [[ "$zone" == left && "$(get_left_layout_mode)" != single ]]; then
         class=$(jq -r --arg addr "$addr" '.[] | select(.address == $addr) | .class' <<< "$CENTERSTAGE_CLIENTS")
-        if [[ "$class" == obsidian ]]; then zone=left-primary; else zone=left-secondary; fi
+        if [[ "$class" == obsidian || "$class" == "Mai Buddy" ]]; then zone=left-primary; else zone=left-secondary; fi
     fi
     tag="centerstage-$zone"
+    # Give an explicitly centered game the whole stage, not half of a narrow
+    # two-window grid. Keep displaced work available in the right sidebar.
+    if [[ "$zone" == center && "${CS_WOW[$addr]:-}" == true ]]; then
+        local displaced
+        CENTERSTAGE_COMMANDS+=("if not cs_snapshot['$addr'] then return end")
+        while IFS= read -r displaced; do
+            [[ -n "$displaced" ]] || continue
+            CENTERSTAGE_COMMANDS+=("if not cs_snapshot['$displaced'] then return end")
+        done < <(jq -r --arg addr "$addr" --argjson ws "$workspace" '
+            .[] | select(.address != $addr and .workspace.id == $ws and
+            ((.tags // []) | index("centerstage-center"))) | .address' <<< "$CENTERSTAGE_CLIENTS")
+        while IFS= read -r displaced; do
+            [[ -n "$displaced" ]] || continue
+            centerstage_tag "$displaced" -centerstage-center || return 1
+            centerstage_tag "$displaced" +centerstage-right || return 1
+            affected[right]=1
+        done < <(jq -r --arg addr "$addr" --argjson ws "$workspace" '
+            .[] | select(.address != $addr and .workspace.id == $ws and
+            ((.tags // []) | index("centerstage-center"))) | .address' <<< "$CENTERSTAGE_CLIENTS")
+        CENTERSTAGE_CLIENTS=$(jq -c --arg addr "$addr" --argjson ws "$workspace" '
+            map(if .address != $addr and .workspace.id == $ws and
+                ((.tags // []) | index("centerstage-center")) then
+                .tags = ((.tags // []) | map(select(. != "centerstage-center"))) + ["centerstage-right"]
+            else . end)' <<< "$CENTERSTAGE_CLIENTS") || return 1
+    fi
     for old_tag in ${CS_ZONE_TAGS[$addr]}; do
         old_zone=${old_tag#centerstage-}
         affected[${old_zone%%-*}]=1

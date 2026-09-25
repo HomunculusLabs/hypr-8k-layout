@@ -60,6 +60,164 @@ class HandlerTest(unittest.TestCase):
     def set_events(self, events):
         self.events = events.encode()
 
+    def test_wow_opens_in_center_and_keeps_existing_work_in_sidebar(self):
+        parent = client("0xa1", zone="center")
+        game = client("0xa2", tags=[], size=[1923, 1923],
+                      **{"class": "steam_app_4036538709", "title": "World of Warcraft"})
+        self.seed([parent, game])
+        self.set_events("openwindow>>a2,1,steam_app_4036538709,World of Warcraft\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertIn("centerstage-center", after[1]["tags"])
+        self.assertEqual(after[1]["size"], [2560, 1440])
+        self.assertIn("centerstage-right", after[0]["tags"])
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
+    def test_tagged_rabby_is_floated_without_joining_a_zone(self):
+        parent = client("0xa1", zone="center", pid=1234, **{"class": "brave-browser"})
+        popup = client("0xa2", tags=["centerstage-auxiliary*"], floating=False,
+                       size=[440, 720], pid=1234,
+                       **{"class": "brave-acmacodkjbdgmoleebolmdjonilkdbch-Default"})
+        self.seed([parent, popup])
+        self.set_events("openwindow>>a2,1,brave-acmacodkjbdgmoleebolmdjonilkdbch-Default,Rabby\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertEqual(after[0], parent)
+        self.assertTrue(after[1]["floating"], "auxiliary windows must not remain below the floating layout")
+        self.assertEqual(after[1]["size"], popup["size"], "preserve the app's requested dialog size")
+        self.assertFalse(set(after[1]["tags"]) & {"centerstage-center", "centerstage-right", "centerstage-left"})
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")),
+                         "leave initial focus to the compositor; do not steal it back asynchronously")
+
+    def test_normal_second_browser_window_sharing_pid_is_managed(self):
+        parent = client("0xa1", zone="center", pid=1234, **{"class": "brave-browser"})
+        second = client("0xa2", tags=[], floating=False, size=[1923, 1923], pid=1234,
+                        **{"class": "brave-browser", "title": "New Tab - Brave"})
+        self.seed([parent, second])
+        self.set_events("openwindow>>a2,1,brave-browser,New Tab - Brave\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertEqual(after[0], parent)
+        self.assertTrue(after[1]["floating"])
+        self.assertIn("centerstage-right", after[1]["tags"])
+
+    def test_auxiliary_close_does_not_reflow_manually_sized_working_windows(self):
+        parent = client("0xa1", zone="center", at=[2560, 480], size=[2560, 1200])
+        popup = client("0xa2", tags=["centerstage-auxiliary*"], size=[440, 720])
+        self.seed([parent, popup])
+        self.set_events("openwindow>>a2,1,fixture,dialog\nclosewindow>>a2\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(json.loads(self.clients.read_text())[0], parent,
+                         "closing an auxiliary window must not retile the workspace")
+        self.assertEqual(self.calls("eval"), [])
+
+    def test_auxiliary_present_at_startup_can_close_without_reflow(self):
+        parent = client("0xa1", zone="center", at=[2560, 480], size=[2560, 1200])
+        self.seed([parent, client("0xa2", tags=["centerstage-auxiliary*"], size=[440, 720])])
+        self.set_events("movewindowv2>>a2,1,1\nclosewindow>>a2\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(json.loads(self.clients.read_text())[0], parent)
+        self.assertEqual(self.calls("eval"), [])
+
+    def test_resized_small_auxiliary_keeps_role_across_handler_restart(self):
+        parent = client("0xa1", zone="center", at=[2560, 480], size=[2560, 1200])
+        self.seed([parent, client("0xa2", tags=[], floating=False, size=[480, 320])])
+        self.set_events("openwindow>>a2,1,fixture,small dialog\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertIn("centerstage-auxiliary", after[1]["tags"], "the fallback role must survive resizing and restart")
+        after[1]["size"] = [900, 700]
+        self.seed(after)
+
+        def close_after_restart():
+            connection, _ = self.socket.accept()
+            with connection:
+                connection.sendall(b"closewindow>>a2\n")
+                connection.shutdown(socket.SHUT_WR)
+
+        server = threading.Thread(target=close_after_restart, daemon=True)
+        server.start()
+        self.addCleanup(server.join, 2)
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(json.loads(self.clients.read_text())[0], parent)
+        self.assertEqual(self.calls("eval"), [], "a resized auxiliary close must not reflow the workspace")
+
+    def test_small_tiled_auxiliary_floats_without_resize(self):
+        popup = client("0xa1", tags=[], floating=False, size=[480, 320])
+        self.seed([popup])
+        self.set_events("openwindow>>a1,1,fixture,small dialog\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())[0]
+        self.assertTrue(after["floating"])
+        self.assertEqual(after["size"], popup["size"])
+        self.assertEqual(after["tags"], ["centerstage-auxiliary"])
+
+    def test_already_floating_small_menu_keeps_geometry(self):
+        popup = client("0xa1", tags=[], floating=True, size=[320, 160], at=[4000, 500])
+        self.seed([popup])
+        self.set_events("openwindow>>a1,1,fixture,menu\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())[0]
+        self.assertEqual(after["at"], popup["at"])
+        self.assertEqual(after["size"], popup["size"])
+        self.assertEqual(after["tags"], ["centerstage-auxiliary"])
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
+    def test_large_tagged_dialog_is_excluded_without_shared_pid(self):
+        popup = client("0xa1", tags=["centerstage-auxiliary*"], floating=False, size=[1923, 1923])
+        self.seed([popup])
+        self.set_events("openwindow>>a1,1,fixture,large dialog\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())[0]
+        self.assertTrue(after["floating"])
+        self.assertEqual(after["tags"], popup["tags"])
+        self.assertEqual(after["size"], popup["size"])
+
+    def test_background_auxiliary_does_not_steal_focus(self):
+        parent = client("0xa1", zone="center")
+        popup = client("0xa2", workspace=2, tags=["centerstage-auxiliary"], floating=False)
+        self.seed([parent, popup])
+        self.set_events("openwindow>>a2,2,fixture,dialog\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertEqual(after[0], parent)
+        self.assertTrue(after[1]["floating"])
+        self.assertEqual(after[1]["workspace"], popup["workspace"])
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
+    def test_auxiliary_float_guard_does_not_toggle_an_already_floated_client(self):
+        popup = client("0xa1", tags=["centerstage-auxiliary"], floating=False)
+        self.seed([popup])
+        self.env["CENTERSTAGE_TEST_BEFORE_EVAL"] = json.dumps({"0xa1": {"floating": True}})
+        self.set_events("openwindow>>a1,1,fixture,dialog\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertTrue(json.loads(self.clients.read_text())[0]["floating"])
+
+    def test_auxiliary_float_guard_rechecks_workspace(self):
+        popup = client("0xa1", tags=["centerstage-auxiliary"], floating=False)
+        self.seed([popup])
+        self.env["CENTERSTAGE_TEST_BEFORE_EVAL"] = json.dumps({"0xa1": {"workspace": {"id": 4}}})
+        self.set_events("openwindow>>a1,1,fixture,dialog\n")
+        self.run_script("centerstage-handler.sh")
+        self.assertEqual(json.loads(self.clients.read_text()), [dict(popup, workspace={"id": 4})])
+
+    def test_mai_buddy_always_joins_left_sidebar_even_when_center_is_busy(self):
+        # Live left sidebar runs a split layout; the companion must take the
+        # primary slot, not be treated as a generic single-column window.
+        self.state.joinpath("centerstage-left-layout").write_text("equal-split")
+        center = client("0xa1", zone="center")
+        right = client("0xa2", zone="right")
+        mai = client("0xa3", tags=[], floating=False, size=[1896, 1896],
+                     **{"class": "Mai Buddy", "title": "Bonzi Desktop Companion"})
+        self.seed([center, right, mai])
+        self.set_events("openwindow>>a3,1,Mai Buddy,Bonzi Desktop Companion\n")
+        self.run_script("centerstage-handler.sh")
+        after = json.loads(self.clients.read_text())
+        self.assertIn("centerstage-left-primary", after[2]["tags"],
+                      "the companion must never detour through center/right routing")
+        self.assertTrue(after[2]["floating"])
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
     def test_obsidian_preserves_existing_split_mode(self):
         self.state.joinpath("centerstage-left-layout").write_text("grid-obsidian")
         self.seed([client("0xa1", tags=[], **{"class": "obsidian"})])

@@ -85,12 +85,11 @@ handle_window_open() {
 
     echo "DEBUG: addr=$addr workspace=$workspace floating=$floating class=$class title=$title size=${width}x${height} pid=$pid"
 
-    # Games launched from the Battle.net bottle share the steam_app_* class
-    # with the Battle.net launcher, but only the launcher should be
-    # zone-managed. Game windows (World of Warcraft, ...) must keep
-    # compositor control: floating them into a sidebar cell makes them
-    # render above tiled windows and resizes them on every retile.
-    if [[ "$class" == steam_app_* && "$title" != Battle.net* ]]; then
+    # WoW opts into a resizable 16:9 Centerstage viewport; other Steam games
+    # still retain compositor control. The launcher shares this app class.
+    local is_wow=false
+    [[ "$class" == steam_app_4036538709 && "$title" == "World of Warcraft"* ]] && is_wow=true
+    if [[ "$class" == steam_app_* && "$title" != Battle.net* && "$is_wow" != true ]]; then
         echo "DEBUG: Skipping game window: class=$class title=$title"
         return
     fi
@@ -102,32 +101,67 @@ handle_window_open() {
         return
     fi
 
-    # Skip popup/menu windows (small windows are likely context menus or dialogs)
-    if [[ "$width" -lt 600 || "$height" -lt 400 ]]; then
-        echo "DEBUG: Skipping small window (likely popup/dialog): ${width}x${height}"
-        return
-    fi
-
-    # Skip ANY window that shares PID with another existing window
-    # (child windows, popups, dialogs from same app)
-    local other_windows_same_pid
-    other_windows_same_pid=$(jq -r --argjson pid "$pid" --arg addr "$addr" \
-        '[.[] | select(.pid == $pid and .address != $addr)] | length' <<< "$clients")
-    if [[ "$other_windows_same_pid" -gt 0 ]]; then
-        echo "DEBUG: Skipping window - shares PID $pid with existing window (likely popup/child)"
-        return
-    fi
-
-    # Only handle workspaces 1-3
+    # Only handle workspaces 1-3. Do not alter fullscreen, pinned or hidden clients.
     [[ "$workspace" -gt 3 ]] && { echo "DEBUG: workspace > 3, skipping"; return; }
     [[ "$workspace" -lt 1 ]] && { echo "DEBUG: workspace < 1, skipping"; return; }
+    jq -e '.pinned == true or .hidden == true' <<< "$window_info" >/dev/null && return
 
-    # Check if already has centerstage tag (already handled)
-    local has_tag=$(echo "$window_info" | jq -r '.tags // [] | map(select(startswith("centerstage-"))) | length')
+    # The desktop companion is a transparent character surface smaller than
+    # the auxiliary threshold, but it is a real left-sidebar zone member.
+    # Route it before auxiliary classification so its size never exiles it.
+    if [[ "$class" == "Mai Buddy" ]]; then
+        echo "DEBUG: Moving $class to left sidebar"
+        ~/.config/hypr/scripts/centerstage-move.sh left "$addr"
+        apply_shrink_if_needed "$workspace"
+        return
+    fi
+
+    # An auxiliary role is not layout membership. Dynamic rule tags end in '*'.
+    local has_tag has_auxiliary
+    has_tag=$(jq '[.tags[]? | rtrimstr("*") | select(startswith("centerstage-") and . != "centerstage-auxiliary")] | length' <<< "$window_info")
     [[ "$has_tag" -gt 0 ]] && { echo "DEBUG: already has centerstage tag, skipping"; return; }
+    has_auxiliary=$(jq '[.tags[]? | rtrimstr("*") | select(. == "centerstage-auxiliary")] | length' <<< "$window_info")
+    if [[ "$has_auxiliary" -gt 0 || "$width" -lt 600 || "$height" -lt 400 ]]; then
+        echo "DEBUG: Keeping auxiliary window outside Centerstage: $addr"
+        WINDOW_AUXILIARY[$addr]=1
+        [[ "$floating" == true && "$has_auxiliary" -gt 0 ]] && return
+        # Map-time rules normally float dialogs. Persist the fallback role and
+        # repair a tiled fallback without resizing, moving, or stealing focus.
+        hyprctl eval "
+            local w = hl.get_window('address:$addr')
+            if w and w.mapped and not w.hidden and not w.pinned and w.fullscreen == 0
+                and w.workspace and w.workspace.id == $workspace then
+                local auxiliary = false
+                local zone = false
+                for _, tag in ipairs(w.tags or {}) do
+                    if tag == 'centerstage-auxiliary' or tag == 'centerstage-auxiliary*' then auxiliary = true
+                    elseif tag:match('^centerstage%-') then zone = true end
+                end
+                local fallback = w.size.x < 600 or w.size.y < 400
+                if not zone and (auxiliary or fallback) then
+                    if fallback and not auxiliary then
+                        hl.dispatch(hl.dsp.window.tag({tag='+centerstage-auxiliary',window='address:$addr'}))
+                    end
+                    -- Hyprland 0.56.2 toggles float even with action='set'.
+                    if not w.floating then
+                        hl.dispatch(hl.dsp.window.float({action='set',window='address:$addr'}))
+                    end
+                end
+            end"
+        return
+    fi
+
+    # Sharing a process does not imply a dialog: browsers and other single-process
+    # apps have multiple normal top-level windows. Explicit roles decide instead.
 
     # Placement uses an explicit address; leave focus to the compositor/user.
     # Refocusing here steals focus back after an app opens on another workspace.
+
+    # WoW starts in the center even when another app already occupies it.
+    if [[ "$is_wow" == true ]]; then
+        ~/.config/hypr/scripts/centerstage-move.sh center "$addr"
+        return
+    fi
 
     # PIP-ready mode maps one complete Centerstage zone to each workspace.
     if is_pip_workspace_mode; then
@@ -201,10 +235,11 @@ handle_window_open() {
 
 # A close event contains only the address, so retain the last known workspace.
 # Do not guess from activeworkspace: background closes must not rearrange it.
-declare -A WINDOW_WORKSPACES=()
+declare -A WINDOW_WORKSPACES=() WINDOW_AUXILIARY=()
 handle_window_close() {
-    local addr=$1 workspace=${WINDOW_WORKSPACES[$1]:-}
-    unset 'WINDOW_WORKSPACES[$addr]'
+    local addr=$1 workspace=${WINDOW_WORKSPACES[$1]:-} auxiliary=${WINDOW_AUXILIARY[$1]:-}
+    unset 'WINDOW_WORKSPACES[$addr]' 'WINDOW_AUXILIARY[$addr]'
+    [[ "$auxiliary" == 1 ]] && return 0
     [[ "$workspace" =~ ^[1-3]$ ]] || return 0
     "$HOME/.config/hypr/scripts/centerstage-reflow.sh" "$workspace"
     apply_shrink_if_needed "$workspace"
@@ -242,10 +277,16 @@ if ! { true <&"$EVENT_FD"; }; then
 fi
 
 # Seed existing windows so their first close can be routed without polling.
-while IFS=$'\t' read -r addr workspace; do
+# Preserve auxiliary roles across a handler restart, including small untagged menus.
+while IFS=$'\t' read -r addr workspace auxiliary; do
     [[ "$addr" =~ ^0x[[:xdigit:]]+$ && "$workspace" =~ ^-?[0-9]+$ ]] || continue
     WINDOW_WORKSPACES[$addr]=$workspace
-done < <(hyprctl clients -j | jq -r '.[] | [.address, .workspace.id] | @tsv')
+    [[ "$auxiliary" == true ]] && WINDOW_AUXILIARY[$addr]=1
+done < <(hyprctl clients -j | jq -r '
+    .[] | (.tags // [] | map(rtrimstr("*"))) as $tags |
+    [.address, .workspace.id,
+     (([$tags[] | select(startswith("centerstage-") and . != "centerstage-auxiliary")] | length) == 0
+      and (($tags | index("centerstage-auxiliary")) != null or .size[0] < 600 or .size[1] < 400))] | @tsv')
 
 # Read directly from the pre-connected Hyprland socket.
 while IFS= read -r line <&"$EVENT_FD"; do
