@@ -1,0 +1,113 @@
+Centerstage trackpad and Kinesis hotkey controls
+
+Hotkey 1: tap to arm ONE circular-motion gesture, then release the button.
+  Move three fingers around a relaxed loop and lift them.
+  Rough ovals, small gaps, contact wobble and extra same-direction laps are okay.
+  It looks for looping intent, not geometric precision; even a boxy loop can count.
+  The viewer's end gap is informational, not a requirement to return to the start.
+  Clockwise/counterclockwise recognition only displays one notification.
+  Normal three-finger navigation automatically resumes after the stroke.
+  A second Hotkey 1 tap, Escape, context change, or 8-second timeout cancels.
+  Cancelled/invalid strokes are consumed; they do not turn into navigation.
+
+Hotkey 2: swap the focused window with the center-stage window, 1:1.
+  When the swap finishes, focus lands on the window now in the center.
+  Tapping again swaps straight back with the same partner (remembered per
+  workspace); focus follows the window returning to center, so repeated
+  taps ping-pong with you always typing into the center window.
+  The previous-window action remains available via four-finger swipe down
+  and Super+Tab.
+
+The two physical buttons emit Ctrl+Shift+F11 / Ctrl+Shift+F12 internally. You do
+not hold those keys yourself. The keyboard's current HID descriptor does not
+support F13/F14. These assignments are saved in the keyboard's Base layer;
+all other keys/layers were preserved. Hotkey 1 previously emitted Super+A;
+Hotkey 2 was unassigned.
+
+Three fingers left/right: focus the next populated left/center/right panel.
+Three fingers up/down: previous/next window in the current panel, wrapping.
+Four fingers left/right: native workspace swipe.
+Four fingers down: previous managed window on the current workspace.
+Four fingers up: open the searchable window picker; Escape closes it.
+Super+Ctrl+G: toggle custom gestures and the one-shot shape layer. Native
+workspace swipes stay enabled. Hotkey 2 remains available independently.
+
+Swipe, then lift to commit. A long swipe still performs one action. Left/right
+means physical finger direction, independent of application natural scrolling.
+Both left subcolumns count as one panel. Re-entering a panel restores its last
+focused window. Up/down follows stable slots/geometry, not recent-focus order.
+Left/right stops at the outer edges. Two-finger scrolling and app zoom remain
+unchanged. No shape action moves, resizes, retags, closes, or launches windows.
+
+Focus/shape helpers are limited to managed Centerstage windows on workspaces
+1-3. They are inactive in games, fullscreen, special workspaces, nondefault
+keyboard submaps, and mapped interactive overlays. If Hotkey 1 says context is
+unavailable, first focus a normal managed window. Shape classification remains
+a prototype and needs calibration against real finger movements.
+
+The old temporary Super+Alt shape adapter is no longer needed or loaded.
+Runtime gesture toggles reset to enabled when config reloads. To disable
+persistently, set enabled=false in gestures.lua.
+
+Gesture viewer:
+  http://127.0.0.1:8797
+Open it while testing Hotkey 1 to see the live relative trail, start/end markers,
+closure gap and recognition result. It does not change the gesture action.
+If the local server is not running:
+  python3 /home/t3rpz/.config/hypr/scripts/centerstage-gesture-viewer.py --port 8797
+Only armed shape paths are streamed; no normal pointer/typing data is retained.
+The trace is in memory and erased when the last viewer disconnects. Details:
+  /home/t3rpz/.config/hypr/scripts/gesture-viewer-README.md
+
+Configuration:
+  /home/t3rpz/.config/hypr/gestures.lua
+  /home/t3rpz/.config/hypr/centerstage-shape-mode.lua
+  /home/t3rpz/.config/hypr/centerstage-navigation.lua
+  /home/t3rpz/.config/hypr/centerstage-gesture-state.lua
+Shape dependencies remain under spikes/001-gesture-shapes/{collector,recognizer}.lua.
+
+Navigation sensitivity: threshold=35, lock_distance=12, axis_ratio=1.3 in
+gestures.lua. Values are compositor units, not physical millimeters.
+
+Reload/check:
+  hyprctl reload config-only
+  hyprctl configerrors
+Status, including the last shape result:
+  hyprctl repl 'return require("hypr.gestures").status()'
+Cancel all in-flight custom gestures:
+  hyprctl eval 'require("hypr.gestures").cancel()'
+
+Troubleshooting capture (off by default; one explicitly armed attempt only):
+  hyprctl eval 'assert(require("hypr.gestures").capture_next_shape())'
+  Then tap Hotkey 1 and draw the failing gesture once.
+  hyprctl repl 'return require("hypr.gestures").shape_capture()'
+  hyprctl eval 'require("hypr.gestures").clear_shape_capture()'
+The capture holds at most 512 relative gesture points and rejection metrics in
+memory. It never records ordinary scrolling, typing, screen locations or app
+identity, and does not write a file. Further attempts do not overwrite it.
+Reloading configuration or explicitly clearing removes it. Capture is refused
+while a shape is already armed/in flight; finish/cancel that attempt first.
+
+Recording a recognition corpus (several dozen strokes, per-stroke consent):
+  cd /home/t3rpz/.config/hypr
+  python3 scripts/shape-session.py --expect circle_cw --count 20
+  python3 scripts/shape-session.py --expect circle_ccw --count 20
+  python3 scripts/shape-session.py --expect negative --count 20
+Each sample repeats the one-shot capture above; nothing is written unless you
+answer keep. Files land in shape-corpus/ with a manifest.jsonl intent entry.
+'negative' means three-finger strokes that must NOT trigger (swipes, zigzags,
+figure-eights, scribbles), drawn through the same Hotkey 1 window.
+Evaluate recognizer accuracy and inspect tuning metrics:
+  python3 scripts/shape-eval.py
+  python3 scripts/shape-eval.py --metrics turns
+Delete shape-corpus/ to remove all recorded data; it is plain text files only.
+
+Isolated regressions:
+  cd /home/t3rpz/.config/hypr
+  bash tests/run-centerstage-gesture-checks.sh
+
+Keyboard rollback data (full original keymap + exact saved readback):
+  /home/t3rpz/.config/hypr/keyboard/adv360-backups/20260920-140631-before.json
+  /home/t3rpz/.config/hypr/keyboard/adv360-backups/20260920-140631-after.json
+Hotkey slots are Base-layer positions 20 and 34. Never restore the entire
+keymap over subsequent user edits just to undo these two cells.

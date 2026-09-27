@@ -13,10 +13,11 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def client(address, zone="right", position=1, workspace=1, **overrides):
+def client(address, zone="right", position=1, workspace=1, **overrides: Any):
     item: dict[str, Any] = dict(address=address, workspace={"id": workspace}, floating=True,
                 mapped=True, hidden=False, fullscreen=0, pinned=False,
                 tags=["centerstage-" + zone], at=[0, 0], size=[800, 600],
+                stableId="s" + address[2:],
                 **{"class": "foot", "title": "test", "pid": int(address, 16)})
     if zone == "right":
         item["tags"].append(f"centerstage-right-{position}")
@@ -63,6 +64,74 @@ class LayoutTest(unittest.TestCase):
     def seed(self, clients):
         self.clients.write_text(json.dumps(clients))
         self.log.write_text("")
+
+    def test_wow_can_take_center_without_becoming_a_square_or_splitting_it(self):
+        browser = client("0xa1", zone="center", **{"class": "brave-browser"})
+        game = client("0xa2", tags=[], floating=False, size=[1923, 1923],
+                      **{"class": "steam_app_4036538709", "title": "World of Warcraft"})
+        self.seed([browser, game])
+        self.run_script("centerstage-move.sh", "center", "0xa2")
+        after = {w["address"]: w for w in json.loads(self.clients.read_text())}
+        self.assertEqual(after["0xa2"]["size"], [2560, 1440])
+        self.assertEqual(after["0xa2"]["at"], [2560, 360])
+        self.assertTrue(after["0xa2"]["floating"])
+        self.assertIn("centerstage-center", after["0xa2"]["tags"])
+        self.assertIn("centerstage-right", after["0xa1"]["tags"])
+        self.assertNotIn("centerstage-center", after["0xa1"]["tags"])
+        self.assertEqual(len(self.calls("eval")), 1)
+        self.assertFalse(any("hl.dsp.focus" in call[1] for call in self.calls("eval")))
+
+    def test_wow_retile_preserves_aspect_and_ignores_fullscreen(self):
+        for width, height in ((2560, 1960), (3000, 1800), (3840, 1080)):
+            with self.subTest(width=width, height=height):
+                self.state.joinpath('centerstage-center-width').write_text(str(width))
+                self.state.joinpath('centerstage-center-height-1').write_text(str(height))
+                self.seed([client('0xa1', zone='center',
+                    **{'class': 'steam_app_4036538709', 'title': 'World of Warcraft'})])
+                self.run_script('centerstage-retile.sh', 'center', '1')
+                game = json.loads(self.clients.read_text())[0]
+                self.assertEqual(game['size'][0] * 9, game['size'][1] * 16)
+                self.assertLessEqual(game['size'][0], width)
+                self.assertLessEqual(game['size'][1], height)
+                self.log.write_text('')
+                self.run_script('centerstage-retile.sh', 'center', '1')
+                self.assertEqual(self.calls('eval'), [], 'settled game must not be resized repeatedly')
+        fullscreen = client('0xa1', zone='center', fullscreen=2, at=[0, 0], size=[7680, 2160],
+                            **{'class': 'steam_app_4036538709', 'title': 'World of Warcraft'})
+        self.seed([fullscreen])
+        self.run_script('centerstage-retile.sh', 'center', '1')
+        self.assertEqual(json.loads(self.clients.read_text()), [fullscreen])
+        self.assertEqual(self.calls('eval'), [])
+
+    def test_wow_width_cycle_grows_the_viewport_instead_of_only_moving_sidebars(self):
+        self.seed([client('0xa1', zone='center', at=[2560, 360], size=[2560, 1440],
+                         **{'class': 'steam_app_4036538709', 'title': 'World of Warcraft'})])
+        self.run_script('centerstage-resize.sh', '1')
+        game = json.loads(self.clients.read_text())[0]
+        self.assertEqual(game['size'], [2992, 1683])
+        self.assertEqual(game['at'], [(7680 - 2992) // 2, (2160 - 1683) // 2])
+        self.run_script('centerstage-resize.sh', '1')
+        game = json.loads(self.clients.read_text())[0]
+        self.assertEqual(game['size'], [3472, 1953])
+        self.run_script('centerstage-resize.sh', '1')
+        self.assertEqual(json.loads(self.clients.read_text())[0]['size'], [1920, 1080])
+
+    def test_wow_width_cycle_wraps_past_height_limited_duplicates(self):
+        self.state.joinpath('centerstage-center-height-1').write_text('1080')
+        game = client('0xa1', zone='center', at=[2880, 540], size=[1920, 1080])
+        game.update({'class': 'steam_app_4036538709', 'title': 'World of Warcraft'})
+        self.seed([game])
+        self.run_script('centerstage-resize.sh', '1')
+        self.assertEqual(self.state.joinpath('centerstage-center-width').read_text().strip(), '1920')
+        self.assertEqual(json.loads(self.clients.read_text())[0]['size'], [1920, 1080])
+
+    def test_wow_promotion_cancels_if_game_becomes_fullscreen_mid_transaction(self):
+        original = [client('0xa1', zone='center'), client('0xa2', tags=[],
+                    **{'class': 'steam_app_4036538709', 'title': 'World of Warcraft'})]
+        self.seed(original)
+        self.env['CENTERSTAGE_TEST_BEFORE_EVAL'] = json.dumps({'0xa2': {'fullscreen': 2}})
+        self.run_script('centerstage-move.sh', 'center', '0xa2')
+        self.assertEqual(json.loads(self.clients.read_text()), [original[0], dict(original[1], fullscreen=2)])
 
     def test_center_preserving_resize_does_not_grow_at_screen_origin(self):
         self.state.joinpath("centerstage-left-layout").write_text("equal-split")

@@ -1,0 +1,63 @@
+Kinesis Advantage360 Pro — saved hotkey setup
+
+Active controls
+  Hotkey 1: tap once to arm a single three-finger circle. Notification only.
+  Hotkey 2: swap the focused window with the center-stage window (tap again
+    on the center window to swap back; pair remembered per workspace).
+  Hotkey 1 again or Escape cancels shape mode; it also expires after 8 seconds.
+  No keyboard key needs to be held while drawing.
+
+Keyboard-side changes, Base layer only
+  Position 20 (left upper numbered hotkey):
+    Old: Key Press Super+A, param1 0x08070004.
+    New: Key Press Ctrl+Shift+F11, param1 0x03070044 (50790468).
+  Position 34 (left lower numbered hotkey):
+    Old: None.
+    New: Key Press Ctrl+Shift+F12, param1 0x03070045 (50790469).
+
+The live Key Press behavior ID was 50397; None was 39616. Resolve those IDs
+again from the device before future programming; they are firmware-specific.
+The device advertised keyboardMax=103 and its USB/Bluetooth input capabilities
+omitted F13/F14. Supported function-key chords avoid a firmware update.
+
+Verification performed
+  Read device identity, unlock status, full keymap, physical layout and behavior
+  metadata through the official ZMK Studio protocol. No unsaved edits existed.
+  Wrote only Base positions 20 and 34; full readback matched that exact change.
+  Saved to the keyboard, reconnected, read back the full map again, and confirmed
+  no unsaved changes. No other key, layer, layer name or physical layout changed.
+  No firmware flashing, bootloader action, factory reset or Bluetooth reset.
+
+  36 isolated navigation/gesture/controller checks passed, along with the
+  existing Centerstage suite and keyboard navigation regressions.
+  The shape prototype's 56 tests and 90-case synthetic sweep passed.
+  Live uinput-generated Ctrl+Shift+F11/F12 exercised the native keybindings on
+  owned temporary windows. Circle replay only notified, normal navigation
+  resumed, repeated-tap and mid-stroke Escape cancellation worked, and window
+  geometry/tags/pointer coordinates remained unchanged. Probes were removed
+  and original focus, handler and autosave state restored.
+  The real native eight-second timer fired after 8.05 seconds in a deliberately
+  stable synthetic context and consumed the cancelled stroke remainder.
+  Hyprland configuration errors were empty after activation and verification.
+
+Physical Kinesis button presses and real-finger circle recognition still need
+hands-on confirmation. Automated input and synthetic paths are not hardware
+finger captures.
+
+Backup files
+  /home/t3rpz/.config/hypr/keyboard/adv360-backups/20260920-140631-before.json
+  /home/t3rpz/.config/hypr/keyboard/adv360-backups/20260920-140631-after.json
+  /home/t3rpz/.config/hypr/keyboard/adv360-backups/hypr-20260920-141606/
+
+Restore only these two cells if reverting, after checking for later user edits;
+do not overwrite the whole old keymap. The JSON snapshot contains the complete
+original device map, behavior metadata and physical layout for reference.
+
+Access note
+  A temporary per-device ACL granted t3rpz read/write on the current USB serial
+  device. No permanent serial-group membership or udev rule was added. Removing
+  that ACL required renewed sudo authentication, so it remains until the USB
+  device is disconnected. Unplugging USB removes that device node/temporary ACL.
+  The saved keyboard mappings do not require the programming connection.
+
+User guide: /home/t3rpz/.config/hypr/gesture-guide.txt

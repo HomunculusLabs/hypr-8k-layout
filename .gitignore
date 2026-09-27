@@ -1,0 +1,4 @@
+# Recorded gesture traces are personal input data, never committed.
+shape-corpus/
+# Per-workspace swap memory is runtime state.
+state/centerstage-swap-last-*

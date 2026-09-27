@@ -57,8 +57,34 @@ events:
   launches. Ready windows have no initialization delay; not-yet-mapped windows
   receive a bounded retry.
 - The handler remembers window workspaces and follows `movewindowv2` events.
-  Closing a background window reflows that workspace in one transaction, not
-  whichever workspace is currently focused.
+  Closing a background layout window reflows that workspace in one transaction,
+  not whichever workspace is currently focused. Closing an auxiliary window
+  does not trigger a layout reflow, including after a handler restart.
+
+### Auxiliary windows
+
+`centerstage-windows.lua` gives Rabby extension windows, compositor-reported
+modal dialogs, and GTK/KDE/GNOME portal prompts the `centerstage-auxiliary`
+role (displayed with a trailing `*` when supplied by a window rule). These
+windows open floating and centered, without occupying a Centerstage zone.
+Native initial-focus behavior is retained: there is no forced refocus,
+cross-workspace pinning, or persistent focus trap.
+
+The handler also keeps small unassigned windows (width below 600 or height
+below 400) outside the layout and persists that fallback as the
+`centerstage-auxiliary` tag. If one arrives tiled, it is floated without an
+explicit resize; an already-floating menu keeps its placement. Existing zone
+membership takes precedence over this size fallback, including across a
+handler restart. Normal additional browser/application windows are routed
+normally even when they share a PID. Quick image-viewer routing and navigation
+shortcuts are unchanged.
+
+Run `python3 tests/test-centerstage-handler.py -v` and
+`python3 tests/test-centerstage-auxiliary-rules.py -v` for isolated coverage.
+For opt-in native rule verification, run
+`python3 tests/verify-centerstage-auxiliary-live.py`; it creates disposable
+terminal stand-ins on an unused background workspace, never opens a wallet,
+and checks cleanup and preservation of working windows and focus.
 
 Retiling is done by `~/.config/hypr/scripts/centerstage-retile.sh`, which:
 
@@ -70,6 +96,22 @@ Retiling is done by `~/.config/hypr/scripts/centerstage-retile.sh`, which:
   window and the secondary sub-column uses the grid.
 
 ## Smooth transitions and responsiveness
+
+New Foot terminals on workspaces 1-3 materialize in their assigned slot instead
+of visibly travelling from their provisional tiled position. The native Lua
+controller in `centerstage-terminal-entrance.lua` uses a temporary non-membership
+tag to keep only the new terminal transparent and unanimated until Centerstage
+has placed it and its geometry has settled. Removing the tag restores its normal
+opacity and animations; other windows and later terminal moves are unchanged.
+A one-second fail-open deadline, workspace/role checks, stable window IDs, and
+reload cleanup prevent stranded invisible terminals. Popups, small utility
+windows, and already-assigned terminals are not delayed.
+
+`tests/test-centerstage-terminal-entrance.py` covers the controller and its
+interaction with the real handler under isolated IPC. The opt-in
+`tests/verify-centerstage-terminal-entrance-live.py` exercises native opening,
+transparent placement, reveal, animation restoration, and timeout recovery on
+an unused workspace with a uniquely identified terminal stand-in.
 
 The active `scripts/` entrypoints for retile, move, and directional swap share
 `centerstage-transaction.sh` and `centerstage-plan.sh`. The separate legacy
@@ -84,6 +126,13 @@ The active `scripts/` entrypoints for retile, move, and directional swap share
 - Up/down swaps exchange existing cell rectangles, preserving their widths
   and right-sidebar numbered shortcuts. Left/right follows the visual order
   in `grid-obsidian` mode as well as the other left layouts.
+- The Hotkey 2 focused-center swap (`centerstage-swap-focused-center.sh`)
+  exchanges the focused window with the first center cell, remembers the
+  swapped pair per workspace, and swaps straight back when the window now
+  holding the center cell is focused. Focus follows the window now in
+  center stage (guarded so background-workspace swaps never change the
+  active workspace). Stale memories (closed or moved windows, verified by
+  stableId) fall back to the first center cell.
 - Fullscreen, hidden, pinned, screensaver, and game windows are excluded from
   these automatic layout transactions. A changed workspace or zone membership
   between planning and application invalidates that window's queued updates.
