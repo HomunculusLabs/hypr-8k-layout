@@ -74,14 +74,21 @@ o.window({ class = "^steam_app_4036538709$", title = "^Battle\\.net" }, {
   workspace = "4",
 })
 
--- World of Warcraft: locked to workspace 4. Fullscreen, not tiled: the
--- single-window 1:1 aspect rule squares a lone tiled window (~1923x1923),
--- and WoW's windowed resolution list only goes up to the current window
--- size — so tiling hid the 7680x2160 modes. Fullscreen sizes it to the
--- output and exposes the monitor's full mode list.
-o.window({ class = "^steam_app_4036538709$", title = "^World of Warcraft" }, {
-  workspace = "4",
-  fullscreen = true,
+-- WoW participates in Centerstage on workspace 1. The shared layout helper
+-- fits a 16:9 viewport and moves previous center work into the right sidebar.
+-- SUPER+F uses native fullscreen and restores this floating viewport on exit.
+o.window({ class = "^steam_app_4036538709$", title = "^World of Warcraft.*$" }, {
+  workspace = "1",
+  float = true,
+  size = { 2560, 1440 },
+  center = true,
+  opacity = "1.0 override 1.0 override 1.0 override",
+  no_blur = true,
+  no_shadow = true,
+  no_anim = true,
+  rounding = 0,
+  content = "game",
+  idle_inhibit = "focus",
 })
 -- Diablo II Resurrected: fullscreen on workspace 4 (Window Mode 0 in its
 -- Settings.json; this rule makes Hyprland force the fullscreen state).

@@ -1,0 +1,73 @@
+DESKTOP AND WOW SETUP
+
+Desktop
+  Omarchy/Quickshell is retained; no second bar or notification daemon.
+  Centered Everforest bar: 44px high, 12px bottom gap, larger text and icons.
+  Simple date/time center, workspace controls left, system controls right.
+  Notification cards: 440px at this theme's font scale, up to 3 body lines.
+  Existing notification actions, history and DND remain in use.
+  Super+N: show recent notification history.
+  Super+Ctrl+N: toggle Do Not Disturb.
+  Right-click a notification to dismiss it.
+
+WoW (current Classic Beta installation)
+  Launches floating on workspace 1, not forced fullscreen on workspace 4.
+  Centerstage's normal initial viewport is 2560x1440 (16:9).
+  Existing center windows move into the right sidebar when WoW takes center.
+  Other Steam games retain their existing exclusions; Diablo rules unchanged.
+  WoW stays opaque and skips blur, shadow, rounded-corner clipping, and resize
+  animations. Fullscreen windows are excluded from automatic layout resizing.
+
+Controls
+  Super+P on WoW: put it in the center again.
+  Super+F: native fullscreen; press again to restore the floating viewport.
+  Super+R, then W: cycle center width; Escape leaves adjustment mode.
+  Super+R, then T: cycle the available center height; Escape to leave.
+  The game fits a 16:9 rectangle inside the selected area. Widening therefore
+  grows both dimensions, subject to the available height.
+
+Game configuration for next launch
+  Windowed resolution: 2560x1440 (was 1923x1923).
+  gxWindow=1, GxMaximize=0.
+  maxFPS=120; maxFPSBk=30 while unfocused.
+  Fullscreen resolution remains 7680x2160.
+  D3D11, giQuality=1, VSync and graphics quality were preserved.
+  Monitor mode, GPU driver, Proton runner and launcher were not changed.
+
+Verification boundary
+  The isolated Centerstage tests exercise automatic routing, promotion,
+  aspect-preserving resizing and fullscreen exclusion.
+  A live, test-owned Foot window with the WoW app ID exercised the native
+  rules and three 2560x1440 -> 7680x2160 -> 2560x1440 fullscreen round trips
+  on an unused background workspace. Working windows and focus were unchanged.
+  This is compositor verification, NOT a running-WoW or FPS benchmark.
+  Launch WoW to confirm its actual Xwayland/DXVK render viewport and UI.
+
+Relevant files
+  ~/.config/omarchy/shell.json
+  ~/.config/omarchy/plugins/t3rpz.bar/Bar.qml
+  ~/.config/omarchy/plugins/t3rpz.notifications/Service.qml
+  ~/.config/omarchy/plugins/t3rpz.notifications/components/NotificationCard.qml
+  ~/.config/omarchy/themes/everforest/shell.toml
+  ~/.config/hypr/looknfeel.lua
+  ~/.config/hypr/bindings.lua
+  ~/.config/hypr/scripts/centerstage-{handler,transaction,plan,resize}.sh
+
+Backup directory
+  /home/t3rpz/.config/hypr/backups/desktop-wow-20260922-094744
+  Original Hyprland files/scripts are at its root, plugins in matching
+  t3rpz.bar and t3rpz.notifications directories, Config.wtf under wow/.
+  shell-theme.toml contains the prior generated shell theme. The user theme
+  overlay did not exist before this change.
+  Restore only the desired component, with WoW closed before restoring its
+  Config.wtf. Reload Hyprland and restart the handler after script rollback;
+  restart the Omarchy shell after restoring QML. Do not reset all of Omarchy.
+
+Tests
+  cd ~/.config/hypr
+  tests/run-centerstage-checks.sh
+  python3 tests/test-desktop-refresh.py -v
+  lua tests/test-wow-window-rules.lua
+  python3 tests/verify-wow-viewport-live.py --live
+
+  The last command creates owned desktop probes; it does not launch WoW.

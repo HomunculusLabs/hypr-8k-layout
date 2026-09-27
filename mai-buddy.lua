@@ -7,7 +7,7 @@ hl.window_rule({
   name = "mai-buddy-transparent-surface",
   match = {
     initial_class = "^Mai Buddy$",
-    initial_title = "^Bonzi Desktop Companion$",
+    initial_title = "^(Bonzi Desktop Companion|Mai Buddy)$",
   },
   float = true,
   no_blur = true,
