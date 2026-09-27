@@ -13,3 +13,5 @@ __pycache__/
 backups/
 # Shaders are symlinks into the installed aether pack, not repo content.
 shaders/
+# Volatile: rewritten by running layout scripts.
+state/centerstage-center-width
