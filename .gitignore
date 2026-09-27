@@ -9,5 +9,7 @@ state/gamepad-mode
 __pycache__/
 # Time-stamped local backups of config files; git history is the backup.
 *.bak.*
-*.before-*.2026*
+*.before-*
 backups/
+# Shaders are symlinks into the installed aether pack, not repo content.
+shaders/
