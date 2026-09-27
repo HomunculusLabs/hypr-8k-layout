@@ -51,53 +51,61 @@ echo "off" > "$STATE_DIR/centerstage-pbp-mode"
 
 sleep 0.5
 
-hyprctl dispatch workspace 1
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" workspace 1
 
 # --- LEFT-SECONDARY: Tmux "system" session (btop + ssh homelab btop stacked) ---
 # Position: x=80, y=100, 750x1960 (full height, tmux handles the split)
 # Uses title "btop-system" so window rules can pin it in place
 before=$(hyprctl clients -j | jq '[.[] | select(.class == "Alacritty")] | length')
-hyprctl dispatch exec "alacritty --title 'btop-system' -e tmux new-session -d -s system 'btop' \\; split-window -v 'ssh homelab btop' \\; attach"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" exec "alacritty --title 'btop-system' -e tmux new-session -d -s system 'btop' \\; split-window -v 'ssh homelab btop' \\; attach"
 addr=$(wait_for_new_window "Alacritty" "$before")
 if [[ -n "$addr" ]]; then
-    hyprctl dispatch setfloating "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-left-secondary" "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-pinned" "address:$addr"
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact 750 1960 ; dispatch moveactive exact 80 100"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" setfloating "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-pinned" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact 750 1960
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 80 100
 fi
 
 # --- LEFT-PRIMARY: Obsidian ---
 # Position: x=938, y=100, 982x1960
 before=$(hyprctl clients -j | jq '[.[] | select(.class == "obsidian")] | length')
-hyprctl dispatch exec "obsidian"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" exec "obsidian"
 addr=$(wait_for_new_window "obsidian" "$before")
 if [[ -n "$addr" ]]; then
-    hyprctl dispatch setfloating "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-left-primary" "address:$addr"
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact 982 1960 ; dispatch moveactive exact 938 100"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" setfloating "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact 982 1960
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 938 100
 fi
 
 # --- CENTER: Brave ---
 # Position: x=2560, y=100, 2560x1960
 before=$(hyprctl clients -j | jq '[.[] | select(.class == "brave-browser")] | length')
-hyprctl dispatch exec "brave"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" exec "brave"
 addr=$(wait_for_new_window "brave-browser" "$before")
 if [[ -n "$addr" ]]; then
-    hyprctl dispatch setfloating "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-center" "address:$addr"
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact 2560 1960 ; dispatch moveactive exact 2560 100"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" setfloating "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact 2560 1960
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 2560 100
 fi
 
 # --- RIGHT: Ghostty (for claude) ---
 # Position: x=6410, y=100, 1190x1960
 before=$(hyprctl clients -j | jq '[.[] | select(.class == "com.mitchellh.ghostty")] | length')
-hyprctl dispatch exec "ghostty"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" exec "ghostty"
 addr=$(wait_for_new_window "com.mitchellh.ghostty" "$before")
 if [[ -n "$addr" ]]; then
-    hyprctl dispatch setfloating "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-right" "address:$addr"
-    hyprctl dispatch tagwindow "+centerstage-right-1" "address:$addr"
-    hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact 1190 1960 ; dispatch moveactive exact 6410 100"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" setfloating "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right-1" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact 1190 1960
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact 6410 100
 fi
 
 # Restart handler now that windows are positioned

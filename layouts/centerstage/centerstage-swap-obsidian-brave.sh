@@ -33,12 +33,12 @@ fi
 # Helper to clear zone tags from a window
 clear_zone_tags() {
     local addr="$1"
-    hyprctl dispatch tagwindow -- "-centerstage-left" "address:$addr" 2>/dev/null || true
-    hyprctl dispatch tagwindow -- "-centerstage-center" "address:$addr" 2>/dev/null || true
-    hyprctl dispatch tagwindow -- "-centerstage-right" "address:$addr" 2>/dev/null || true
-    hyprctl dispatch tagwindow -- "-centerstage-left-primary" "address:$addr" 2>/dev/null || true
-    hyprctl dispatch tagwindow -- "-centerstage-left-secondary" "address:$addr" 2>/dev/null || true
-    hyprctl dispatch tagwindow -- "-centerstage-left-expanded" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-center" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-primary" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-secondary" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-expanded" "address:$addr" 2>/dev/null || true
 }
 
 # Clear tags from both windows first
@@ -48,14 +48,14 @@ clear_zone_tags "$brave_addr"
 # Determine swap direction and apply new tags
 if [[ "$obsidian_zone" == "centerstage-left-secondary" ]]; then
     # Obsidian → center, Brave → left-secondary
-    hyprctl dispatch tagwindow "+centerstage-center" "address:$obsidian_addr"
-    hyprctl dispatch tagwindow "+centerstage-left-secondary" "address:$brave_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center" "address:$obsidian_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary" "address:$brave_addr"
     new_left_addr="$brave_addr"
     msg="Swapped: Brave → left, Obsidian → center"
 else
     # Obsidian → left-secondary, Brave → center
-    hyprctl dispatch tagwindow "+centerstage-left-secondary" "address:$obsidian_addr"
-    hyprctl dispatch tagwindow "+centerstage-center" "address:$brave_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary" "address:$obsidian_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center" "address:$brave_addr"
     new_left_addr="$obsidian_addr"
     msg="Swapped: Obsidian → left, Brave → center"
 fi
@@ -69,10 +69,10 @@ sleep 0.05
 
 # If was expanded, apply expanded state to new left-secondary window
 if [[ -n "$was_expanded" ]]; then
-    hyprctl dispatch tagwindow "+centerstage-left-expanded" "address:$new_left_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-expanded" "address:$new_left_addr"
     read -r left_x left_width _tag <<< "$(get_zone_dimensions left)"
-    hyprctl dispatch resizewindowpixel "exact $left_width $TOTAL_HEIGHT,address:$new_left_addr"
-    hyprctl dispatch movewindowpixel "exact $left_x $ZONE_Y,address:$new_left_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $left_width $TOTAL_HEIGHT,address:$new_left_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $left_x $ZONE_Y,address:$new_left_addr"
 fi
 
 notify-send "Center Stage" "$msg"

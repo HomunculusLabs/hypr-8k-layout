@@ -66,8 +66,34 @@ handle_window_open() {
     local workspace=$(echo "$window_info" | jq -r ".workspace.id")
     local floating=$(echo "$window_info" | jq -r ".floating")
     local class=$(echo "$window_info" | jq -r ".class")
+    local pid=$(echo "$window_info" | jq -r ".pid")
+    local width=$(echo "$window_info" | jq -r ".size[0]")
+    local height=$(echo "$window_info" | jq -r ".size[1]")
+    local fullscreen=$(echo "$window_info" | jq -r ".fullscreen // 0")
 
-    echo "DEBUG: addr=$addr workspace=$workspace floating=$floating class=$class"
+    echo "DEBUG: addr=$addr workspace=$workspace floating=$floating class=$class size=${width}x${height} pid=$pid"
+
+    # Session overlays and fullscreen clients must retain compositor control of
+    # the whole output rather than being floated into a Centerstage zone.
+    if [[ "$class" == "org.omarchy.screensaver" || "$fullscreen" -ne 0 ]]; then
+        echo "DEBUG: Skipping fullscreen/session overlay: class=$class fullscreen=$fullscreen"
+        return
+    fi
+
+    # Skip popup/menu windows (small windows are likely context menus or dialogs)
+    if [[ "$width" -lt 600 || "$height" -lt 400 ]]; then
+        echo "DEBUG: Skipping small window (likely popup/dialog): ${width}x${height}"
+        return
+    fi
+
+    # Skip ANY window that shares PID with another existing window
+    # (child windows, popups, dialogs from same app)
+    local other_windows_same_pid=$(hyprctl clients -j | jq -r \
+        "[.[] | select(.pid == $pid and .address != \"$addr\")] | length")
+    if [[ "$other_windows_same_pid" -gt 0 ]]; then
+        echo "DEBUG: Skipping window - shares PID with existing window (likely popup/child)"
+        return
+    fi
 
     # Only handle workspaces 1-3
     [[ "$workspace" -gt 3 ]] && { echo "DEBUG: workspace > 3, skipping"; return; }
@@ -78,7 +104,7 @@ handle_window_open() {
     [[ "$has_tag" -gt 0 ]] && { echo "DEBUG: already has centerstage tag, skipping"; return; }
 
     # Focus the new window first
-    hyprctl dispatch focuswindow "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
 
     # Apps that should always go to left sidebar
     case "$class" in

@@ -26,6 +26,24 @@ next=${sizes[0]}
 for i in "${!sizes[@]}"; do
     [[ "$current" == "${sizes[$i]}" ]] && next=${sizes[$(((i + 1) % ${#sizes[@]}))]}
 done
+if [[ ${#centers[@]} -eq 1 && "${CS_WOW[${centers[0]}]:-}" == true ]]; then
+    # WoW's fitted viewport can be narrower than its nominal slot (e.g. 2992
+    # in a 3000px slot). Advance by visible fitted widths, not exact presets
+    # or another workspace's globally saved preference. Skip height-limited
+    # duplicate sizes rather than making the shortcut appear stuck.
+    next=${sizes[0]}
+    height_limit=$TOTAL_HEIGHT
+    height_file="$STATE_DIR/centerstage-center-height-$workspace"
+    if [[ -f "$height_file" ]]; then
+        saved_height=$(<"$height_file")
+        case "$saved_height" in 1080|1200|1400|1600|1800|1960) height_limit=$saved_height ;; esac
+    fi
+    for candidate in "${sizes[@]}"; do
+        fit_units=$((candidate / 16))
+        (( height_limit / 9 < fit_units )) && fit_units=$((height_limit / 9))
+        if (( fit_units * 16 > current )); then next=$candidate; break; fi
+    done
+fi
 # Plan against a private pending state file; publish only after successful IPC.
 width_target=$WIDTH_FILE
 pending=$(mktemp "$STATE_DIR/.centerstage-width.XXXXXX") || exit 1
@@ -35,7 +53,7 @@ WIDTH_FILE=$pending
 for zone in left right; do
     centerstage_plan_zone "$zone" "$workspace" || exit 1
 done
-if [[ ${#centers[@]} -eq 1 ]]; then
+if [[ ${#centers[@]} -eq 1 && "${CS_WOW[${centers[0]}]:-}" != true ]]; then
     read -r new_x new_width _ <<< "$(get_zone_dimensions center)"
     read -r _ old_y _ old_height <<< "${CS_GEOMETRY[${centers[0]}]}"
     centerstage_place "${centers[0]}" "$new_x" "$old_y" "$new_width" "$old_height" || exit 1

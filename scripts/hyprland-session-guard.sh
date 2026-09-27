@@ -190,8 +190,12 @@ main_loop() {
         started=$(date +%s)
 
         if (( attempt >= 2 )); then
-            export AQ_NO_MODIFIERS=1
-            log "attempt $attempt: AQ_NO_MODIFIERS=1 enabled"
+            if [[ -n "${HYPR_GUARD_ALLOW_NO_MODIFIERS:-}" ]]; then
+                export AQ_NO_MODIFIERS=1
+                log "attempt $attempt: AQ_NO_MODIFIERS=1 enabled"
+            else
+                log "attempt $attempt: AQ_NO_MODIFIERS skipped (breaks KMS import on NVIDIA 610.57.04 + DSC display; set HYPR_GUARD_ALLOW_NO_MODIFIERS=1 to re-enable)"
+            fi
         fi
 
         : > "$ATTEMPT_LOG"

@@ -41,7 +41,7 @@ else
         # Focus this window first
         "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
         # Move it to center
-        ~/.config/hypr/scripts/centerstage-move.sh center
+        $HOME/.config/hypr/layouts/centerstage/centerstage-move.sh center
     done <<< "$windows"
 
     notify-send "Center Stage" "Enabled - windows moved to center"

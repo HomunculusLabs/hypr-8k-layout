@@ -13,19 +13,24 @@ centerstage_begin() {
         .pinned != true and ((.tags // []) | index("centerstage-pinned") | not) and
         .class != "org.omarchy.screensaver" and
         (((.class // "") | startswith("steam_app_") | not) or
-         ((.title // "") | startswith("Battle.net"))))]' <<< "$CENTERSTAGE_CLIENTS") || return 1
+         ((.title // "") | startswith("Battle.net")) or
+         (.class == "steam_app_4036538709" and ((.title // "") | startswith("World of Warcraft")))))]' <<< "$CENTERSTAGE_CLIENTS") || return 1
     CENTERSTAGE_COMMANDS=()
-    declare -gA CS_GEOMETRY=() CS_FLOATING=() CS_TAGS=() CS_ZONE_TAGS=() CS_WORKSPACE=()
+    declare -gA CS_GEOMETRY=() CS_FLOATING=() CS_TAGS=() CS_ZONE_TAGS=() CS_WORKSPACE=() CS_WOW=() CS_MAI=()
     declare -gA CS_EXPECTED_X=() CS_EXPECTED_Y=() CS_EXPECTED_WIDTH=() CS_EXPECTED_HEIGHT=()
-    local addr floating x y width height workspace tags zone_tags
-    while IFS=$'\t' read -r addr floating x y width height workspace tags zone_tags; do
+    local addr floating x y width height workspace is_wow is_mai tags zone_tags
+    while IFS=$'\t' read -r addr floating x y width height workspace is_wow is_mai tags zone_tags; do
         [[ "$addr" =~ ^0x[[:xdigit:]]+$ && "$workspace" =~ ^-?[0-9]+$ ]] || continue
         CS_GEOMETRY[$addr]="$x $y $width $height"
         CS_FLOATING[$addr]=$floating
         CS_WORKSPACE[$addr]=$workspace
+        CS_WOW[$addr]=$is_wow
+        CS_MAI[$addr]=$is_mai
         CS_TAGS[$addr]=" $tags "
         CS_ZONE_TAGS[$addr]="$zone_tags"
     done < <(jq -r '.[] | [.address, .floating, .at[0], .at[1], .size[0], .size[1], .workspace.id,
+                          (.class == "steam_app_4036538709" and ((.title // "") | startswith("World of Warcraft"))),
+                          (.class == "Mai Buddy"),
                           ((.tags // []) | join(" ")),
                           ((.tags // []) | map(select(test("^centerstage-(left(-(primary|secondary))?|center|right(-[1-9][0-9]*)?)$"))) | join(" "))] | @tsv' <<< "$CENTERSTAGE_CLIENTS")
 }
@@ -36,6 +41,31 @@ centerstage_place() {
     [[ "$x" =~ ^-?[0-9]+$ && "$y" =~ ^-?[0-9]+$ ]] || return 1
     [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || return 1
     (( width > 0 && height > 0 )) || return 1
+    # Fit WoW's resizable client to a 16:9 viewport within its layout cell.
+    # Apply at the shared placement seam so retile, sizing and swaps agree.
+    if [[ "${CS_WOW[$addr]:-}" == true ]]; then
+        local units=$((width / 16)) fitted_width fitted_height
+        (( height / 9 < units )) && units=$((height / 9))
+        (( units > 0 )) || return 1
+        fitted_width=$((units * 16))
+        fitted_height=$((units * 9))
+        x=$((x + (width - fitted_width) / 2))
+        y=$((y + (height - fitted_height) / 2))
+        width=$fitted_width
+        height=$fitted_height
+    fi
+    # The desktop companion is a character surface, not a panel: in VTuber mode
+    # she stands on the bottom edge of the output, so extend her cell from the
+    # zone top to the physical screen bottom (past the reserved bar area), and
+    # flush to the left edge of the output while preserving the right edge.
+    if [[ "${CS_MAI[$addr]:-}" == true ]]; then
+        height=$((SCREEN_HEIGHT - y))
+        (( height > 0 )) || height=1
+        if (( x > 0 )); then
+            width=$((width + x))
+            x=0
+        fi
+    fi
     CS_EXPECTED_X[$addr]=$x
     CS_EXPECTED_Y[$addr]=$y
     CS_EXPECTED_WIDTH[$addr]=$width
@@ -105,7 +135,8 @@ centerstage_commit() {
             if not w or not w.mapped or w.hidden or w.fullscreen ~= 0 or w.pinned or
                not w.workspace or w.workspace.id ~= workspace or type(w.tags) ~= "table" then return nil end
             if w.class == "org.omarchy.screensaver" or
-               (w.class:match("^steam_app_") and not w.title:match("^Battle%.net")) then return nil end
+               (w.class:match("^steam_app_") and not w.title:match("^Battle%.net") and
+                not (w.class == "steam_app_4036538709" and w.title:match("^World of Warcraft"))) then return nil end
             local actual_zone_tags = {}
             for _, tag in ipairs(w.tags) do
                 if type(tag) == "string" and cs_is_zone_tag(tag) then

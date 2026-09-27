@@ -20,8 +20,8 @@ if [[ "$ZONE" == "left" ]]; then
         if [[ ${#prim_windows[@]} -gt 0 ]]; then
             for addr in "${prim_windows[@]}"; do
                 [[ -z "$addr" ]] && continue
-                hyprctl dispatch resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $prim_width $TOTAL_HEIGHT,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $prim_x $ZONE_Y,address:$addr"
             done
         fi
 
@@ -47,8 +47,8 @@ if [[ "$ZONE" == "left" ]]; then
                     [[ -z "$addr" ]] && continue
                     x=$sec_x
                     y=$(( ZONE_Y + i * cell_height ))  # No gap
-                    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-                    hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+                    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
                     ((i++))
                 done
             else
@@ -80,8 +80,8 @@ if [[ "$ZONE" == "left" ]]; then
                         x=$(( sec_x + col * (cell_width + GAP_IN) ))
                         y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
                     fi
-                    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-                    hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+                    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
                     ((i++))
                 done
             fi
@@ -111,8 +111,8 @@ if [[ "$ZONE" == "right" ]]; then
             for addr in "${prim_windows[@]}"; do
                 [[ -z "$addr" ]] && continue
                 y=$(( ZONE_Y + i * (prim_height + GAP_IN) ))
-                hyprctl dispatch resizewindowpixel "exact $prim_width $prim_height,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $prim_x $y,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $prim_width $prim_height,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $prim_x $y,address:$addr"
                 ((i++))
             done
         fi
@@ -151,8 +151,8 @@ if [[ "$ZONE" == "right" ]]; then
                     x=$(( sec_x + col * (cell_width + GAP_IN) ))
                     y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
                 fi
-                hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-                hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
                 ((i++))
             done
         fi
@@ -165,11 +165,16 @@ fi
 read -r ZONE_X ZONE_WIDTH TAG <<< "$(get_zone_dimensions "$ZONE")"
 
 # Get all windows in this zone and workspace
-# Sort by existing position tag (windows with tags keep order, new windows go to end)
+# Sort by: 1) existing position tag, 2) y position (row), 3) x position (column)
+# This ensures stable ordering even when tags are missing or equal
 mapfile -t windows < <(hyprctl clients -j | jq -r "
     [.[] | select(.workspace.id == $WORKSPACE and .tags != null and (.tags | index(\"$TAG\")) != null)
-     | . + {pos_tag: ((.tags // []) | map(select(startswith(\"centerstage-right-\")) | ltrimstr(\"centerstage-right-\") | tonumber) | first // 999)}]
-    | sort_by(.pos_tag)
+     | . + {
+         pos_tag: ((.tags // []) | map(select(startswith(\"centerstage-right-\")) | ltrimstr(\"centerstage-right-\") | tonumber) | first // 999),
+         pos_y: .at[1],
+         pos_x: .at[0]
+       }]
+    | sort_by([.pos_tag, .pos_y, .pos_x])
     | .[].address")
 
 count=${#windows[@]}
@@ -226,17 +231,17 @@ for addr in "${windows[@]}"; do
         y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
     fi
 
-    hyprctl dispatch resizewindowpixel "exact $cell_width $cell_height,address:$addr"
-    hyprctl dispatch movewindowpixel "exact $x $y,address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $cell_width $cell_height,address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $x $y,address:$addr"
 
     # Assign position tag for right sidebar (1-indexed)
     if [[ "$ZONE" == "right" ]]; then
         # Strip old position tags first
         for pos in {1..9}; do
-            hyprctl dispatch tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null
         done
         # Assign new position tag
-        hyprctl dispatch tagwindow "+centerstage-right-$((i + 1))" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right-$((i + 1))" "address:$addr"
     fi
 
     ((i++))

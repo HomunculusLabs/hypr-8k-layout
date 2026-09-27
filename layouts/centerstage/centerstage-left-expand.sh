@@ -21,13 +21,13 @@ read -r left_x left_width _tag <<< "$(get_zone_dimensions left)"
 
 if [[ -n "$is_expanded" ]]; then
     # Collapse: remove expanded tag and retile
-    hyprctl dispatch tagwindow -- "-centerstage-left-expanded" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-expanded" "address:$addr"
     ~/.config/hypr/scripts/centerstage-retile.sh left "$workspace"
     notify-send "Center Stage" "Left secondary collapsed"
 else
     # Expand: add tag and resize to full left sidebar
-    hyprctl dispatch tagwindow "+centerstage-left-expanded" "address:$addr"
-    hyprctl dispatch resizewindowpixel "exact $left_width $TOTAL_HEIGHT,address:$addr"
-    hyprctl dispatch movewindowpixel "exact $left_x $ZONE_Y,address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-expanded" "address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizewindowpixel "exact $left_width $TOTAL_HEIGHT,address:$addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" movewindowpixel "exact $left_x $ZONE_Y,address:$addr"
     notify-send "Center Stage" "Left secondary expanded"
 fi

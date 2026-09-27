@@ -54,21 +54,21 @@ elif echo "$window_tags" | jq -e 'index("centerstage-right-primary") or index("c
 fi
 
 # Remove any existing zone tags (including sub-column tags)
-hyprctl dispatch tagwindow -- "-centerstage-left" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-center" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-right" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-left-primary" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-left-secondary" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-right-primary" "address:$addr" 2>/dev/null || true
-hyprctl dispatch tagwindow -- "-centerstage-right-secondary" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-center" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-primary" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-left-secondary" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right-primary" "address:$addr" 2>/dev/null || true
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right-secondary" "address:$addr" 2>/dev/null || true
 
 # Remove position tags from right sidebar
 for pos in {1..9}; do
-    hyprctl dispatch tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null || true
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow -- "-centerstage-right-$pos" "address:$addr" 2>/dev/null || true
 done
 
 # Float the window
-hyprctl dispatch setfloating "address:$addr"
+"$HOME/.config/hypr/scripts/hypr-dispatch.sh" setfloating "address:$addr"
 
 # Determine retile zone
 retile_zone="$ZONE"
@@ -80,36 +80,36 @@ case "$ZONE" in
         if [[ "$layout_mode" != "single" ]]; then
             # Route based on window class
             if [[ "$class" == "obsidian" ]]; then
-                hyprctl dispatch tagwindow "+centerstage-left-primary" "address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary" "address:$addr"
             else
-                hyprctl dispatch tagwindow "+centerstage-left-secondary" "address:$addr"
+                "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary" "address:$addr"
             fi
         else
-            hyprctl dispatch tagwindow "+centerstage-left" "address:$addr"
+            "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left" "address:$addr"
         fi
         retile_zone="left"
         ;;
     left-primary)
-        hyprctl dispatch tagwindow "+centerstage-left-primary" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-primary" "address:$addr"
         retile_zone="left"
         ;;
     left-secondary)
-        hyprctl dispatch tagwindow "+centerstage-left-secondary" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-left-secondary" "address:$addr"
         retile_zone="left"
         ;;
     center)
-        hyprctl dispatch tagwindow "+centerstage-center" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-center" "address:$addr"
         ;;
     right)
-        hyprctl dispatch tagwindow "+centerstage-right" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right" "address:$addr"
         retile_zone="right"
         ;;
     right-primary)
-        hyprctl dispatch tagwindow "+centerstage-right-primary" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right-primary" "address:$addr"
         retile_zone="right"
         ;;
     right-secondary)
-        hyprctl dispatch tagwindow "+centerstage-right-secondary" "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" tagwindow "+centerstage-right-secondary" "address:$addr"
         retile_zone="right"
         ;;
     *)

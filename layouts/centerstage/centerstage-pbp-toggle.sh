@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-source "$HOME/.config/hypr/scripts/centerstage-lib.sh"
+source "$HOME/.config/hypr/layouts/centerstage/centerstage-lib.sh"
 
 CURRENT_BACKGROUND_LINK="$HOME/.local/state/omarchy/current/background"
 
@@ -55,8 +55,8 @@ if [[ "$current_mode" == "off" ]]; then
     echo "on" > "$PBP_MODE_FILE"
 
     # 4. Retile sidebars with new PBP dimensions
-    ~/.config/hypr/scripts/centerstage-retile.sh left 1
-    ~/.config/hypr/scripts/centerstage-retile.sh right 1
+    $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh left 1
+    $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh right 1
 
     # Reload background to fix the shell wallpaper after the output change
     reload_wallpaper
@@ -87,9 +87,9 @@ else
 
     # 3. Retile all zones with normal dimensions
     sleep 0.1
-    ~/.config/hypr/scripts/centerstage-retile.sh left 1
-    ~/.config/hypr/scripts/centerstage-retile.sh right 1
-    ~/.config/hypr/scripts/centerstage-retile.sh center 1
+    $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh left 1
+    $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh right 1
+    $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh center 1
 
     # Reload background to fix the shell wallpaper after the output change
     reload_wallpaper

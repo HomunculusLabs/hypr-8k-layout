@@ -151,11 +151,13 @@ handle_vertical() {
             y=$(( ZONE_Y + row * (cell_height + GAP_IN) ))
         fi
 
-        hyprctl --batch "dispatch focuswindow address:$addr ; dispatch resizeactive exact $cell_width $cell_height ; dispatch moveactive exact $x $y"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$addr"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" resizeactive exact "$cell_width" "$cell_height"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" moveactive exact "$x" "$y"
     done
 
     # Refocus the original window
-    hyprctl dispatch focuswindow "address:$focused_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$focused_addr"
 }
 
 # Handle left/right (move between zones)
@@ -252,29 +254,29 @@ handle_horizontal() {
     [[ -z "$target_zone" ]] && { notify-send "Center Stage" "Already at edge"; return; }
 
     # Focus the window first (tagwindow applies to active window)
-    hyprctl dispatch focuswindow "address:$focused_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$focused_addr"
 
     # Remove ALL zone tags first (including sub-column tags)
-    hyprctl dispatch "tagwindow -centerstage-left"
-    hyprctl dispatch "tagwindow -centerstage-center"
-    hyprctl dispatch "tagwindow -centerstage-right"
-    hyprctl dispatch "tagwindow -centerstage-left-primary"
-    hyprctl dispatch "tagwindow -centerstage-left-secondary"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-left"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-center"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-right"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-left-primary"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-left-secondary"
 
     # Remove position tags
     for pos in {1..9}; do
-        hyprctl dispatch "tagwindow -centerstage-right-$pos"
+        "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow -centerstage-right-$pos"
     done
 
     # Add new tag
-    hyprctl dispatch "tagwindow +centerstage-$target_zone"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" "tagwindow +centerstage-$target_zone"
 
     # Retile affected zones
     [[ -n "$retile_source" ]] && $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh "$retile_source" "$workspace"
     [[ -n "$retile_target" && "$retile_target" != "$retile_source" ]] && $HOME/.config/hypr/layouts/centerstage/centerstage-retile.sh "$retile_target" "$workspace"
 
     # Refocus the moved window
-    hyprctl dispatch focuswindow "address:$focused_addr"
+    "$HOME/.config/hypr/scripts/hypr-dispatch.sh" focuswindow "address:$focused_addr"
 
     notify-send "Center Stage" "Moved to $target_zone"
 }
