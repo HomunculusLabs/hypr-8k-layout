@@ -157,7 +157,8 @@ printf 'scenario: crash loop exhausts budget\n'
 run_guard crash-loop "$WORK/state.cl"
 check 'guard gives up with rc 1' 1 "$RUN_RC"
 check 'budget exhausted logged' 1 "$(( $(in_log crash-loop 'crash budget exhausted') >= 1 ? 1 : 0 ))"
-check 'AQ_NO_MODIFIERS escalation' 1 "$(( $(in_log crash-loop 'AQ_NO_MODIFIERS=1 enabled') >= 1 ? 1 : 0 ))"
+check 'AQ_NO_MODIFIERS skipped by default' 1 "$(( $(in_log crash-loop 'AQ_NO_MODIFIERS skipped') >= 1 ? 1 : 0 ))"
+check 'AQ_NO_MODIFIERS not exported by default' 0 "$(( $(in_log crash-loop 'AQ_NO_MODIFIERS=1 enabled') >= 1 ? 1 : 0 ))"
 check 'crash times recorded' 1 "$(( $(lines_in "$WORK/state.cl/crash.times") >= 6 ? 1 : 0 ))"
 
 # --- 6. safe-mode auto-recovery -----------------------------------------------

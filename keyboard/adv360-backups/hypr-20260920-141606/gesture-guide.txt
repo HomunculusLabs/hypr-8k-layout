@@ -1,0 +1,61 @@
+Centerstage trackpad controls
+
+Three fingers left/right: focus the next populated left/center/right panel.
+Three fingers up/down: previous/next window in the current panel, wrapping.
+Four fingers left/right: native workspace swipe (unchanged).
+Four fingers down: previous managed window on the current workspace.
+Four fingers up: open the existing searchable window picker; Escape closes it.
+Super + Ctrl + G: disable/enable custom Centerstage gestures. Workspace swipes stay on.
+
+Swipe, then lift your fingers to commit. A long swipe still performs one action.
+Left and right mean the direction your fingers move. These focus gestures are
+not inverted by the natural-scrolling option used for application scrolling.
+
+Both left subcolumns are one panel. Returning to a panel restores its last-used
+window. Up/down uses stable layout order (right-panel slot numbers, otherwise
+rows then columns), not recent-focus order. Left/right stops at the outer edges.
+
+These gestures change focus only. They do not move, resize, retag, launch, or
+close applications. The picker lists existing windows; selecting one may switch
+workspaces explicitly. Two-finger scrolling/pinch and keyboard shortcuts remain
+unchanged. Circular gestures and layout manipulation are not enabled.
+
+Custom gestures do nothing outside Centerstage workspaces 1-3, on untagged/game
+windows, in fullscreen, in special workspaces, in a keyboard submap, or while an
+interactive layer such as the picker is mapped. Short/diagonal/cancelled swipes
+and gestures whose focus/layout changes midway do nothing.
+
+Runtime toggles reset to enabled on configuration reload. For a persistent off
+setting, change enabled=true to enabled=false in gestures.lua. The four-finger
+workspace binding remains independent of this setting.
+
+Configuration:
+  /home/t3rpz/.config/hypr/gestures.lua
+  /home/t3rpz/.config/hypr/centerstage-navigation.lua
+  /home/t3rpz/.config/hypr/centerstage-gesture-state.lua
+
+Sensitivity is in gestures.lua: threshold=35, lock_distance=12, axis_ratio=1.3.
+These are initial compositor-unit settings, not physical millimeters. Adjust
+only after checking actual recognition and comfort. Reload after edits:
+  hyprctl reload config-only
+  hyprctl configerrors
+
+Diagnostic mode (recognizes custom swipes but does not execute their actions):
+  hyprctl eval 'require("hypr.gestures").set_diagnostic(true)'
+Check the most recent custom gesture, without recording app titles or raw input:
+  hyprctl repl 'return require("hypr.gestures").status()'
+  hyprctl repl 'local e=require("hypr.gestures").last; return tostring(e.dx)..","..tostring(e.dy)'
+Return to normal:
+  hyprctl eval 'require("hypr.gestures").set_diagnostic(false)'
+
+Isolated tests:
+  cd /home/t3rpz/.config/hypr
+  bash tests/run-centerstage-gesture-checks.sh
+
+First hands-on check:
+  Start in a center window. Swipe left, then up/down through the left panel.
+  Swipe right back to center, then right to the right panel.
+  Try four-finger down twice to switch out and back.
+  Try four-finger up and dismiss the picker with Escape.
+  Confirm two-finger scrolling/zoom and four-finger workspace swipes still work.
+  Try Super+Ctrl+G to disable/re-enable the custom layer if anything feels off.

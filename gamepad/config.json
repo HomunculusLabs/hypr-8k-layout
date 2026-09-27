@@ -1,0 +1,9 @@
+{
+    "dead_zone": 12000,
+    "trigger_threshold": 30,
+    "mouse_sensitivity": 12.0,
+    "mouse_acceleration": 1.3,
+    "poll_interval_ms": 16,
+    "window_poll_ms": 500,
+    "volume_step": 5
+}

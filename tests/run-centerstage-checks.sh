@@ -15,7 +15,7 @@ case "${1:-}" in
 esac
 [[ $# -le 1 ]] || { printf 'Too many arguments\n' >&2; exit 2; }
 cd -- "$ROOT"
-for test in tests/test-centerstage-{controls,interactions,smoothness,handler,motion,live-runner}.py; do
+for test in tests/test-centerstage-{controls,interactions,smoothness,handler,auxiliary-rules,terminal-entrance,motion,live-runner}.py; do
     python3 "$test" -v
 done
 for test in tests/test-centerstage-{config,migration,pip-workspaces,pip-workspace-edge-cases}.sh; do
@@ -26,7 +26,7 @@ for script in scripts/centerstage-{lib,transaction,plan,move,retile,reflow,swap,
 done
 bash -n scripts/hyprland-session-guard.sh
 bash tests/test-hyprland-session-guard.sh
-luac -p looknfeel.lua
+luac -p looknfeel.lua hyprland.lua centerstage-windows.lua centerstage-terminal-entrance.lua
 if "$live"; then
     python3 tests/verify-centerstage-live.py
 fi

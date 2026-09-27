@@ -2,3 +2,12 @@
 shape-corpus/
 # Per-workspace swap memory is runtime state.
 state/centerstage-swap-last-*
+# Runtime locks and volatile handler/gamepad state.
+*.lock
+state/gamepad-connected
+state/gamepad-mode
+__pycache__/
+# Time-stamped local backups of config files; git history is the backup.
+*.bak.*
+*.before-*.2026*
+backups/

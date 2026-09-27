@@ -1,0 +1,2 @@
+REPLAY synthetic-cw.csv (provenance supplied by caller, not verified)
+circle_cw; one closed round consistent loop; quality=0.998 (heuristic); aspect=1.0000; circularity=0.9992; closure=0.0000; direction_consistency=1.0000; distinct_points=97.0000; input_points=97.0000; length=376.9238; max_angle_step=0.0982; radial_cv=0.0003; radial_max_deviation=0.0003; roughness=1.0005; span=120.0000; turns=1.0000

@@ -1,0 +1,53 @@
+# Game window class patterns (regex, case-insensitive)
+# One pattern per line. Lines starting with # are comments.
+
+# Steam games (xpadneo + proton/wine)
+steam_app_.*
+steamwebhelper
+
+# Wine/Proton processes (real Steam Proton games appear as steam_app_*, so no
+# bare "proton" pattern: it matches Proton Mail/VPN page titles)
+^wine.*
+\.exe$
+
+# Game launchers when running games
+gamescope
+lutris
+heroic
+bottles
+
+# Native game engines
+^Unity$
+UnityPlayer
+^Godot.*
+SDL Application
+^MonoGame
+
+# Common game frameworks
+^love$
+LÖVE
+^pygame
+
+# Emulators
+dolphin-emu
+pcsx2
+rpcs3
+yuzu
+ryujinx
+cemu
+retroarch
+^mgba
+^desmume
+^ppsspp
+
+# Specific games (add your own)
+minecraft
+prismlauncher
+^Terraria$
+^Celeste$
+^Hollow.*Knight
+^Stardew
+
+# VR
+^SteamVR
+^vrmonitor

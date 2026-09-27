@@ -1,0 +1,52 @@
+PASS synthetic circle_cw
+PASS translation / scale circle_cw
+PASS varied sampling and phase circle_cw
+PASS bounded synthetic noise circle_cw
+PASS synthetic circle_ccw
+PASS translation / scale circle_ccw
+PASS varied sampling and phase circle_ccw
+PASS bounded synthetic noise circle_ccw
+PASS reject synthetic ellipse
+PASS reject synthetic near_partial
+PASS reject synthetic short
+PASS reject synthetic outback
+PASS reject synthetic double
+PASS reject synthetic partial
+PASS reject synthetic reversal
+PASS reject synthetic eight
+PASS reject synthetic square
+PASS reject synthetic jitter
+PASS reject synthetic excess_noise
+PASS reject synthetic straight
+PASS malformed inputs bounded / nonfinite
+PASS duplicate stationary samples
+FAIL reject small embedded self intersection before resampling: tests.lua:9: circle_cw ~= nil
+PASS collector does not double start delta; finish has no fingers
+PASS collector exact first update
+PASS collector cancellation fingers
+PASS collector cancellation explicit
+PASS collector cancellation nonfinite
+PASS collector cancellation cancelled
+PASS collector cancellation pinch
+PASS collector update bound
+PASS adapter opt-in / exact tuple / idempotence / subscriptions
+PASS adapter guard submap
+PASS adapter guard focus
+PASS adapter guard special
+PASS adapter guard modifiers
+PASS adapter guard workspace_fullscreen
+PASS adapter guard inhibit_override
+PASS adapter guard workspace
+PASS adapter guard fullscreen
+PASS adapter guard layer
+PASS adapter sticky event cancel window.active
+PASS adapter sticky event cancel workspace.active
+PASS adapter sticky event cancel workspace.special_active
+PASS adapter sticky event cancel keybinds.submap
+PASS adapter sticky event cancel monitor.focused
+PASS adapter sticky event cancel layer.opened
+PASS adapter sticky event cancel window.fullscreen
+PASS adapter sticky event cancel input.keyboard.key
+PASS blocked start cannot recover during trace
+PASS guard exception fails closed
+SYNTHETIC/MOCK: 51 tests, 50 passed, 1 failed

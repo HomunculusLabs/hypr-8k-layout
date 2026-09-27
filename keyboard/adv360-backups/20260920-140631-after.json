@@ -1,0 +1,1210 @@
+{
+  "device": {
+    "name": "Adv360 Pro",
+    "serialNumber": "zxb+HBsWvXA="
+  },
+  "keymap": {
+    "layers": [
+      {
+        "name": "Base",
+        "bindings": [
+          {
+            "behaviorId": 50397,
+            "param1": 458798
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458782
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458783
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458784
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458785
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458786
+          },
+          {
+            "behaviorId": 31980,
+            "param1": 1
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 3
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458787
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458788
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458789
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458790
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458791
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458797
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458795
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458772
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458778
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458760
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458773
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458775
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 50790468
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458780
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458776
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458764
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458770
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458771
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458801
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458793
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458756
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458774
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458759
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458761
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458762
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 50790469
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458976
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458978
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458979
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458980
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458763
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458765
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458766
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458767
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458803
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458804
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458977
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458781
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458779
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458758
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458777
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458757
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458826
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458827
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458769
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458768
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458806
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458807
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458808
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458981
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 2
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458805
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458809
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458832
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458831
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458794
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458828
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458829
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458830
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458792
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458796
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458834
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458833
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458799
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458800
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 2
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "name": "Kp",
+        "bindings": [
+          {
+            "behaviorId": 50397,
+            "param1": 458798
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458782
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458783
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458784
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458785
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458786
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 3
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458787
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458803
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458765
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458766
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458837
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458797
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458795
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458772
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458778
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458760
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458773
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458775
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458828
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458847
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458834
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458849
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458771
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458801
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458793
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458756
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458774
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458759
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458761
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458762
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458976
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458978
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458979
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458980
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458761
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458832
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458833
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458831
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458770
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458804
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458977
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458781
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458779
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458758
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458777
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458757
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458826
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458828
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458769
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458841
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458833
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458843
+          },
+          {
+            "behaviorId": 52625
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458981
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 2
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458805
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458809
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458832
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458831
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458794
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458828
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458829
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458830
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458777
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458796
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458834
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458833
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458851
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458800
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 2
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Fn",
+        "bindings": [
+          {
+            "behaviorId": 50397,
+            "param1": 458810
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458811
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458812
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458813
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458814
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458815
+          },
+          {
+            "behaviorId": 31980,
+            "param1": 1
+          },
+          {
+            "behaviorId": 54567,
+            "param1": 3
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458816
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458817
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458818
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458819
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458820
+          },
+          {
+            "behaviorId": 50397,
+            "param1": 458821
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 56811
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Mod",
+        "bindings": [
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 12587,
+            "param1": 3
+          },
+          {
+            "behaviorId": 12587,
+            "param1": 3,
+            "param2": 1
+          },
+          {
+            "behaviorId": 12587,
+            "param1": 3,
+            "param2": 2
+          },
+          {
+            "behaviorId": 12587,
+            "param1": 3,
+            "param2": 3
+          },
+          {
+            "behaviorId": 12587,
+            "param1": 3,
+            "param2": 4
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 56811
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 40676
+          },
+          {
+            "behaviorId": 40676
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 3965
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 12587
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 3555
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 57576
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 35471,
+            "param1": 2
+          },
+          {
+            "behaviorId": 53623
+          },
+          {
+            "behaviorId": 35471,
+            "param1": 3
+          },
+          {
+            "behaviorId": 35471,
+            "param1": 4
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          },
+          {
+            "behaviorId": 39616
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Red",
+        "bindings": [
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {}
+        ]
+      }
+    ],
+    "availableLayers": 3,
+    "maxLayerNameLength": 20
+  },
+  "changes": [
+    [
+      0,
+      20
+    ],
+    [
+      0,
+      34
+    ]
+  ],
+  "source_backup": "/home/t3rpz/.config/hypr/keyboard/adv360-backups/20260920-140631-before.json"
+}

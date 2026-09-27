@@ -1,0 +1,25 @@
+# Astra subagent assignment: native custom gesture prototype
+
+The user explicitly requested an Astra subagent to build a prototype for custom trackpad gestures, especially circular motions, while the parent continues the production Centerstage setup.
+
+You are a bounded implementation subagent. Complete this artifact and return; do not spawn more agents. Work only in /home/t3rpz/.config/hypr/spikes/001-gesture-shapes. You may read /home/t3rpz/.config/hypr/gestures.lua, centerstage-gesture-state.lua, centerstage-navigation.lua, and /usr/share/hypr/stubs/hl.meta.lua for context. Do not modify or source the production configuration, run state-changing hyprctl commands, restart services, install packages, change Hermes configs/skills/memory, commit, or touch other profiles. The parent will review, execute, and activate the prototype if safe.
+
+Deliver a standalone, dependency-free Lua prototype answering: can native three-finger swipe deltas distinguish clockwise/counterclockwise circles and reject ordinary swipes reliably enough to justify hands-on testing?
+
+Required:
+1. Pure shape recognizer accepting an ordered path. Recognize circle_cw and circle_ccw; a clear L stroke is optional if time remains. Reject short traces, straight swipes, partial circles, jitter, out-and-back, self-intersecting/figure-eight paths, and ambiguous shapes. Include understandable confidence/metrics/rejection reasons without pretending scores are calibrated probabilities. Bound input and computational work; handle malformed/non-finite coordinates. Screen coordinates: +y points down.
+2. Test-first isolated tests with a real RED run, then GREEN. Deterministic analytic test traces must be explicitly labeled synthetic, not hardware captures. Include translation/scale robustness, varied sampling, noise, direction reversal, cancellation/finger changes, and callback duplicate-start-delta handling. Lua is installed; no extra packages needed.
+3. A native Hyprland adapter, not automatically loaded: reserve ONLY mods='SUPER ALT', fingers=3, direction='swipe'. Avoid all existing unmodified 3/4-finger gestures. The adapter should be recognition-only: one concise notification/result after release, never execute application/window/system actions. Expose enable/disable/status via a namespaced module and document temporary install/removal. Repeated enable/disable must not duplicate bindings; exact unset tuple must match. Respect inhibition, fullscreen/special/submap/interactive layer guards. Cancel on changed focus/workspace, keyboard modifier release, finger-count changes, or cancelled finish. Do not assume keybind submaps scope hl.gesture automatically.
+4. Bounded collector with start/update/finish; Hyprland v0.56.2 sends the first recognized delta in BOTH start and update, so accumulate only in update. Only swipe data is required. Pinch rotation is NOT an equivalent circular path: native pinch activation waits for a scale change.
+5. A runnable CLI demo/replay command with observable classification results, and an easy way to inspect last recognition/metrics from the live adapter. An optional consented coordinate-only trace export can help later calibration; do not collect window titles, URLs, keystrokes, raw device streams, or anything persistently by default.
+6. README.md with exact run/install/disable commands, test results from execution, algorithm limitations, and a PARTIAL/VALIDATED/INVALIDATED verdict. Be explicit that synthetic fixtures do not verify physical Magic Trackpad recognition and that two-finger shapes are out of scope because they are ordinary scrolling.
+7. Keep a concise RESULTS.md with files created, actual commands/results, and remaining hands-on validation. The parent needs to exercise everything independently.
+
+Known runtime: Hyprland 0.56.2 / Lua configuration on Arch. Lua globals include hl.gesture, hl.notification.create, hl.on, hl.get_active_window, hl.get_active_workspace, hl.get_active_monitor, hl.get_active_special_workspace, hl.get_current_submap, hl.get_layers, hl.is_key_down. Do not guess modifier key APIs: inspect docs/stubs/source and use a safe verified approach. hl.on returns an event subscription with :remove(). Layer fields mapped/interactivity; native window fields stable_id,address,tags,at.x/y,size.x/y,fullscreen numeric,workspace.id,monitor.name. `hl.gesture` supports action={start=function(e)...,update=...,finish=...} although the installed stub lists only string/function. Finish e.cancelled is boolean. Native directions use deltas rather than English pinch naming.
+
+Official sources (read-only if useful):
+https://wiki.hypr.land/configuring/core/binds/gestures/
+https://github.com/hyprwm/Hyprland/blob/v0.56.2/src/managers/input/trackpad/TrackpadGestures.cpp
+https://github.com/hyprwm/Hyprland/blob/v0.56.2/src/managers/input/trackpad/gestures/LuaFunctionGesture.cpp
+
+Prioritize a small working recognizer plus safe native adapter over extra features or elaborate packaging. Nothing must modify the user's desktop during your subtask. Stop when files are written, isolated tests/demo run, and limitations documented.
