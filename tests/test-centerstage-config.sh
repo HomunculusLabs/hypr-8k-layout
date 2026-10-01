@@ -30,7 +30,8 @@ require_text "$ROOT/scripts/centerstage-session-startup.sh" 'venv/bin/hermes -p 
 require_text "$ROOT/scripts/centerstage-session-startup.sh" 'venv/bin/hermes -p surplus'
 require_text "$ROOT/scripts/centerstage-session-startup.sh" 'place_window left-secondary'
 require_text "$ROOT/looknfeel.lua" 'gaps_in = 20'
-require_text "$ROOT/looknfeel.lua" 'rounding = 20'
+# Border/decoration (rounding, opacity, blur) is delegated to the active Omarchy theme.
+require_text "$ROOT/looknfeel.lua" 'omarchy/themes'
 require_text "$ROOT/input.lua" 'follow_mouse = 0'
 require_text "$ROOT/scripts/centerstage-handler.sh" 'fullscreen='
 require_text "$ROOT/scripts/centerstage-handler.sh" 'org\.omarchy\.screensaver'

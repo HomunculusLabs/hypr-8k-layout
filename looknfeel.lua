@@ -10,24 +10,9 @@ hl.config({
   general = {
     gaps_in = 20,
     gaps_out = { top = 100, right = 80, bottom = 100, left = 80 },
-    border_size = 4,
-    col = {
-      active_border = "rgba(a89984ff)",
-      inactive_border = "rgba(665c5499)",
-    },
+    -- border_size, border colors, rounding, opacity, blur and shadow come from
+    -- the active Omarchy theme (~/.config/omarchy/themes/destroyer-gray/hyprland.lua).
     layout = "dwindle",
-  },
-  decoration = {
-    rounding = 20,
-    active_opacity = 0.9,
-    inactive_opacity = 0.8,
-    blur = {
-      enabled = true,
-      size = 6,
-      passes = 2,
-      new_optimizations = true,
-      ignore_opacity = false,
-    },
   },
   dwindle = {
     preserve_split = true,
