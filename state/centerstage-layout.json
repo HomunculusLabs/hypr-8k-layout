@@ -3,16 +3,8 @@
     "workspace": 1,
     "windows": [
       {
-        "class": "foot",
-        "zone": "right"
-      },
-      {
-        "class": "foot",
-        "zone": "right"
-      },
-      {
         "class": "md.obsidian.Obsidian",
-        "zone": "left-secondary"
+        "zone": "center"
       },
       {
         "class": "foot",
@@ -20,7 +12,7 @@
       },
       {
         "class": "brave-browser",
-        "zone": "center"
+        "zone": "left-secondary"
       }
     ]
   }
